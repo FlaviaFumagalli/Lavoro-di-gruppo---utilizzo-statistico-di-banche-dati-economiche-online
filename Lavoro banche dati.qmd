@@ -1,0 +1,91 @@
+---
+title: "Cambiamenti nei pattern di spesa pre e post Covid19 in Italia"
+author: "Gabriele Fogli, Flavia Fumagalli, Mattia Gaiba, 
+    Elena Lenzi, Luca Sturniolo Ricci"
+date: today
+date-format: long
+format: pdf
+
+---
+
+```{r}
+# install.packages("rsdmx")
+library(rsdmx)
+library(dplyr)
+library(tidyr)
+
+url_istat <- "https://esploradati.istat.it/SDMXWS/rest/data/IT1,31_740_DF_DCCV_SPEMEFAM_COICOP_2018_1,1.0/A.IT.FAM_VAL_PERC..BEVER+CLOT_FOOTW+FOOD+FUEL_PT+MEX_RPC+PCARE_HY+TRV_HOL..ALL+LESS_QN_QL+MR_QN_BT_QL+NO_PRC+NO_PRC1Y+SAME_QN_QL..../ALL/?detail=full&startPeriod=2018-01-01&endPeriod=2024-12-31&dimensionAtObservation=TIME_PERIOD"
+
+data_sdmx <- readSDMX(url_istat)
+df_raw <- as.data.frame(data_sdmx)
+
+df_clean <- df_raw %>%
+  select(obsTime, COICOP_CATEG, PURCH_BEHAVIOUR, obsValue) %>%
+  mutate(Gruppo_di_Spesa = case_when(
+    COICOP_CATEG == "FOOD" ~ "Alimentari",
+    COICOP_CATEG == "BEVER" ~ "Bevande alcoliche",
+    COICOP_CATEG == "CLOT_FOOTW" ~ "Abbigliamento e calzature",
+    COICOP_CATEG == "PCARE_HY" ~ "Cura e igiene personale",
+    COICOP_CATEG == "MEX_RPC" ~ "Visite mediche e accertamenti",
+    COICOP_CATEG == "FUEL_PT" ~ "Carburanti per mezzi di trasporto",
+    COICOP_CATEG == "TRV_HOL" ~ "Viaggi e vacanze",
+    TRUE ~ COICOP_CATEG
+  )) %>%
+  mutate(Abitudine = case_when(
+    PURCH_BEHAVIOUR == "SAME_QN_QL" ~ "Comprati senza modifiche",
+    PURCH_BEHAVIOUR == "LESS_QN_QL" ~ "Comprati di meno",
+    PURCH_BEHAVIOUR == "MR_QN_BT_QL" ~ "Comprati di più",
+    PURCH_BEHAVIOUR == "NO_PRC" ~ "Non comprati",
+    PURCH_BEHAVIOUR == "NO_PRC1Y" ~ "Iniziati a comprare",
+    PURCH_BEHAVIOUR == "ALL" ~ "Tutte le voci",
+    TRUE ~ PURCH_BEHAVIOUR
+  )) %>%
+  filter(!COICOP_CATEG %in% c("ALL", "TOTAL"))
+
+formatta_per_anno <- function(data, anno) {
+  data %>%
+    filter(obsTime == as.character(anno)) %>%
+    select(Gruppo_di_Spesa, Abitudine, obsValue) %>%
+    pivot_wider(names_from = Abitudine, values_from = obsValue)
+}
+
+df_2018 <- formatta_per_anno(df_clean, 2018)
+df_2021 <- formatta_per_anno(df_clean, 2021)
+df_2024 <- formatta_per_anno(df_clean, 2024)
+
+```
+
+
+
+```{r}
+url_istat_2 <- "https://esploradati.istat.it/SDMXWS/rest/data/IT1,31_740_DF_DCCV_SPEMEFAM_COICOP_2018_8,1.0/A.IT.SPESA_MEDIA.01+02+03+04+05+06+07+08+09+10+11+12+13+ALL......./ALL/?detail=full&startPeriod=2018-01-01&endPeriod=2024-12-31&dimensionAtObservation=TIME_PERIOD"
+
+data_sdmx_2 <- readSDMX(url_istat_2)
+df_raw_2 <- as.data.frame(data_sdmx_2)
+
+df_spesa_media <- df_raw_2 %>%
+  filter(REF_AREA == "IT" | REF_AREA == "ITA" | REF_AREA == "IT1") %>%
+
+  mutate(Gruppo_di_Spesa = case_when(
+    COICOP_2018 == "01" ~ "Alimentari",
+    COICOP_2018 == "02" ~ "Bevande alcoliche",
+    COICOP_2018 == "03" ~ "Abbigliamento e calzature",
+    COICOP_2018 == "04" ~ "Abitazione, acqua, elettricità e combustibili",
+    COICOP_2018 == "05" ~ "Mobili, articoli e servizi per la casa",
+    COICOP_2018 == "06" ~ "Salute",
+    COICOP_2018 == "07" ~ "Trasporti",
+    COICOP_2018 == "08" ~ "Informazione e comunicazione",
+    COICOP_2018 == "09" ~ "Ricreazione, sport e cultura",
+    COICOP_2018 == "10" ~ "Istruzione",
+    COICOP_2018 == "11" ~ "Ristorazione e alberghi",
+    COICOP_2018 == "12" ~ "Servizi assicurativi e finanziari",
+    COICOP_2018 == "13" ~ "Beni e servizi per la cura della persona",
+    TRUE ~ COICOP_2018
+  )) %>%
+  filter(obsTime %in% c("2018", "2021", "2024")) %>%
+  select(obsTime, Gruppo_di_Spesa, obsValue) %>%
+  distinct(Gruppo_di_Spesa, obsTime, .keep_all = TRUE) %>%
+  pivot_wider(names_from = obsTime, values_from = obsValue) %>% 
+  arrange(Gruppo_di_Spesa)
+
+```
