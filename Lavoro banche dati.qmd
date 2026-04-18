@@ -1,71 +1,241 @@
 ---
-title: "Cambiamenti nei pattern di spesa pre e post Covid19 in Italia"
-author: "Gabriele Fogli, Flavia Fumagalli, Mattia Gaiba, 
-    Elena Lenzi, Luca Sturniolo Ricci"
+title: "Cambiamenti nei pattern di spesa pre e post Covid-19 in Italia"
+author: "Gabriele Fogli, Flavia Fumagalli, Mattia Gaiba, Elena Lenzi, Luca Sturniolo Ricci"
 date: today
 date-format: long
-format: pdf
-
+lang: it
+format: 
+  beamer:
+    theme: "SimplePlus"
+    colortheme: "lily"
+    fonttheme: "structurebold"
+    fontsize: 10pt
+execute:
+  warning: false
+  message: false
+  echo: false
 ---
 
 ```{r}
-# install.packages("rsdmx")
+# Installazione e caricamento dei pacchetti necessari per l'analisi dei dati e la visualizzazione dei risultati. Se i pacchetti non sono già presenti, vengono installati automaticamente.
+if (!requireNamespace("rsdmx", quietly = TRUE)) {
+  install.packages("rsdmx")
+}
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+if (!requireNamespace("tidyr", quietly = TRUE)) {
+  install.packages("tidyr")
+}
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+if (!requireNamespace("knitr", quietly = TRUE)) {
+  install.packages("knitr")
+}
+if (!requireNamespace("kableExtra", quietly = TRUE)) {
+  install.packages("kableExtra")
+}
+if (!requireNamespace("ggrepel", quietly = TRUE)) {
+  install.packages("ggrepel")
+}
+if (!requireNamespace("viridis", quietly = TRUE)) {
+  install.packages("viridis")
+}
+if (!requireNamespace("scales", quietly = TRUE)) {
+  install.packages("scales")
+}
+if (!requireNamespace("pals", quietly = TRUE)) {
+  install.packages("pals")
+}
+
+library(kableExtra)
 library(rsdmx)
 library(dplyr)
 library(tidyr)
-
-url_istat <- "https://esploradati.istat.it/SDMXWS/rest/data/IT1,31_740_DF_DCCV_SPEMEFAM_COICOP_2018_1,1.0/A.IT.FAM_VAL_PERC..BEVER+CLOT_FOOTW+FOOD+FUEL_PT+MEX_RPC+PCARE_HY+TRV_HOL..ALL+LESS_QN_QL+MR_QN_BT_QL+NO_PRC+NO_PRC1Y+SAME_QN_QL..../ALL/?detail=full&startPeriod=2018-01-01&endPeriod=2024-12-31&dimensionAtObservation=TIME_PERIOD"
-
-data_sdmx <- readSDMX(url_istat)
-df_raw <- as.data.frame(data_sdmx)
-
-df_clean <- df_raw %>%
-  select(obsTime, COICOP_CATEG, PURCH_BEHAVIOUR, obsValue) %>%
-  mutate(Gruppo_di_Spesa = case_when(
-    COICOP_CATEG == "FOOD" ~ "Alimentari",
-    COICOP_CATEG == "BEVER" ~ "Bevande alcoliche",
-    COICOP_CATEG == "CLOT_FOOTW" ~ "Abbigliamento e calzature",
-    COICOP_CATEG == "PCARE_HY" ~ "Cura e igiene personale",
-    COICOP_CATEG == "MEX_RPC" ~ "Visite mediche e accertamenti",
-    COICOP_CATEG == "FUEL_PT" ~ "Carburanti per mezzi di trasporto",
-    COICOP_CATEG == "TRV_HOL" ~ "Viaggi e vacanze",
-    TRUE ~ COICOP_CATEG
-  )) %>%
-  mutate(Abitudine = case_when(
-    PURCH_BEHAVIOUR == "SAME_QN_QL" ~ "Comprati senza modifiche",
-    PURCH_BEHAVIOUR == "LESS_QN_QL" ~ "Comprati di meno",
-    PURCH_BEHAVIOUR == "MR_QN_BT_QL" ~ "Comprati di più",
-    PURCH_BEHAVIOUR == "NO_PRC" ~ "Non comprati",
-    PURCH_BEHAVIOUR == "NO_PRC1Y" ~ "Iniziati a comprare",
-    PURCH_BEHAVIOUR == "ALL" ~ "Tutte le voci",
-    TRUE ~ PURCH_BEHAVIOUR
-  )) %>%
-  filter(!COICOP_CATEG %in% c("ALL", "TOTAL"))
-
-formatta_per_anno <- function(data, anno) {
-  data %>%
-    filter(obsTime == as.character(anno)) %>%
-    select(Gruppo_di_Spesa, Abitudine, obsValue) %>%
-    pivot_wider(names_from = Abitudine, values_from = obsValue)
-}
-
-df_2018 <- formatta_per_anno(df_clean, 2018)
-df_2021 <- formatta_per_anno(df_clean, 2021)
-df_2024 <- formatta_per_anno(df_clean, 2024)
-
+library(ggplot2)
+library(knitr)
+library(ggrepel)
+library(viridis)
+library(scales)
+library(pals)
 ```
 
 
+# Dataset e struttura dei dati.
+
+Per analizzare i cambiamenti nei pattern di spesa pre e post Covid-19 in Italia abbiamo selezionato i dati forniti dall'**ISTAT** attraverso il loro servizio SDMX. 
+
+\medskip
+
+## Variabili di interesse.
+
+**Variabile dipendente**: 
+
+- spesa media mensile familiare (in euro correnti).
+
+\smallskip
+
+**Variabili di classificazione**:
+
+- gruppi di spesa (13 categorie più il totale).
+
+- numero di componenti del nucleo familiare (1, 2, 3, 4, 5 o più componenti e totale famiglie).
+
+- anno di riferimento (2014-2024).
+
+
+## Obiettivo
+
+Comprendere in che misura la pandemia da Covid-19 ha modificato la composizione della spesa delle famiglie italiane.
+
+
+---
+
+
+### DATASET 1: Spesa media famigliare per gruppi di spesa relativi agli anni 2014 - 2024.
+
+- Numero di righe: 14
+
+- Numero di colonne: 13
 
 ```{r}
-url_istat_2 <- "https://esploradati.istat.it/SDMXWS/rest/data/IT1,31_740_DF_DCCV_SPEMEFAM_COICOP_2018_8,1.0/A.IT.SPESA_MEDIA.01+02+03+04+05+06+07+08+09+10+11+12+13+ALL......./ALL/?detail=full&startPeriod=2018-01-01&endPeriod=2024-12-31&dimensionAtObservation=TIME_PERIOD"
+# Dati riferiti alla spesa media famigliare per gruppi di spesa relativi agli anni 2014 - 2024.
+url_istat_spesa_media <- "https://esploradati.istat.it/SDMXWS/rest/data/IT1,31_740_DF_DCCV_SPEMEFAM_COICOP_2018_8,1.0/A.IT.SPESA_MEDIA.01+02+03+04+05+06+07+08+09+10+11+12+13+ALL......./ALL/?detail=full&startPeriod=2014-01-01&endPeriod=2024-12-31&dimensionAtObservation=TIME_PERIOD"
+# Indirizzo SDMX per scaricare i dati.
 
-data_sdmx_2 <- readSDMX(url_istat_2)
-df_raw_2 <- as.data.frame(data_sdmx_2)
+data_sdmx_spesa <- readSDMX(url_istat_spesa_media)
+df_grezzo <- as.data.frame(data_sdmx_spesa)
 
-df_spesa_media <- df_raw_2 %>%
+df_spesa_media <- df_grezzo %>%
   filter(REF_AREA == "IT" | REF_AREA == "ITA" | REF_AREA == "IT1") %>%
 
+# Creazione della variabile per i gruppi di spesa, filtraggio dei dati per escludere i periodi non necessari, selezione delle colonne di interesse, rimozione dei duplicati e riorganizzazione del data frame in formato wide.
+  mutate(Gruppo_di_Spesa = case_when(
+    COICOP_2018 == "01" ~ "Alimentari",
+    COICOP_2018 == "02" ~ "Bevande alcoliche",
+    COICOP_2018 == "03" ~ "Abbigliamento e calzature",
+    COICOP_2018 == "04" ~ "Abitazione, acqua, elettricità e combustibili",
+    COICOP_2018 == "05" ~ "Mobili, articoli e servizi per la casa",
+    COICOP_2018 == "06" ~ "Salute",
+    COICOP_2018 == "07" ~ "Servizi di trasporto",
+    COICOP_2018 == "08" ~ "Informazione e comunicazione",
+    COICOP_2018 == "09" ~ "Ricreazione, sport e cultura",
+    COICOP_2018 == "10" ~ "Istruzione",
+    COICOP_2018 == "11" ~ "Ristorazione e alberghi",
+    COICOP_2018 == "12" ~ "Servizi assicurativi e finanziari",
+    COICOP_2018 == "13" ~ "Beni e servizi per la cura della persona",
+    COICOP_2018 == "ALL" ~ "Totale",
+    TRUE ~ COICOP_2018
+  )) %>%
+  filter(obsTime %in% c("2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024")) %>%
+  select(obsTime, Gruppo_di_Spesa, obsValue) %>%
+  distinct(Gruppo_di_Spesa, obsTime, .keep_all = TRUE) %>%
+  pivot_wider(names_from = obsTime, values_from = obsValue) %>% 
+  arrange(Gruppo_di_Spesa)
+
+# Creazione di una tabella per visualizzare la spesa media complessiva (totale in euro) per ogni anni.
+df_spesa_media_tot <- df_spesa_media[14, -1] # Seleziona la riga corrispondente alla spesa totale (14) e tutte le colonne tranne la prima (Gruppo_di_Spesa).
+df_tab <- tibble(
+  Anno  = names(df_spesa_media_tot),
+  Valore = as.numeric(unlist(df_spesa_media_tot, use.names = TRUE)) # Creazione di una tabella con due colonne: "Anno" e "Valore". La colonna "Valore" viene popolata con i valori numerici della spesa totale, convertiti in formato numerico.
+) |> 
+  mutate(Valore = formatC(Valore, format = "f", digits = 2, big.mark = ".", decimal.mark = ",")) # Formattazione dei valori numerici con due decimali, punto come separatore delle migliaia e virgola come separatore decimale.
+
+colnames(df_tab) <- c("Anno", "Spesa (€)")
+df_tab |>
+  kable(
+    format = "latex", 
+    booktabs = TRUE, 
+    caption = "Evoluzione della spesa media", # Accorciato per risparmiare spazio
+    align = c("l", "r"),
+    escape = FALSE
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position"), 
+    position = "center", 
+    font_size = 7,       # Ridotto da 10 a 7
+    full_width = FALSE
+  ) |>
+  row_spec(0, bold = TRUE, color = "black", font_size = 7, background = "#c3d1fc") |> 
+  column_spec(1, width = "1.5cm", latex_valign = "m") |>
+  column_spec(2, width = "1.8cm", bold = TRUE, latex_valign = "m") |>
+  pack_rows("Pre-Covid", 1, 5, italic = TRUE) |>
+  pack_rows("Shock", 6, 8, italic = TRUE) |>
+  pack_rows("Post-Covid", 9, 11, italic = TRUE) |>
+  row_spec(7, background = "#fff241")
+```
+
+
+---
+
+```{r,fig.width = 5, fig.height = 3.7, fig.center = TRUE}
+# Grafico a linee per visualizzare l'andamento della spesa media famigliare per gruppi di spesa relativi agli anni 2014 - 2024 (esclusa spesa totale).
+
+df_spesa_media_no_tot <- df_spesa_media %>%
+  filter(Gruppo_di_Spesa != "Totale") %>%
+  pivot_longer(cols = -Gruppo_di_Spesa, names_to = "Anno", values_to = "Spesa") %>%
+  mutate(Anno = as.numeric(Anno), Spesa = as.numeric(Spesa)) # Selezione dei dati escludendo la spesa totale, riorganizzazione del data frame in formato long e conversione delle colonne "Anno" e "Spesa" in formato numerico.
+
+df_last <- df_spesa_media_no_tot %>%
+  group_by(Gruppo_di_Spesa) %>%
+  slice_max(Anno, n = 1, with_ties = FALSE) %>%
+  ungroup() 
+
+ggplot(df_spesa_media_no_tot, aes(x = Anno, y = Spesa, color = Gruppo_di_Spesa)) +
+  geom_line(linewidth = 0.8, alpha = 0.8) +
+  geom_point(size = 1.5) +
+  geom_text_repel(data = df_last, aes(label = Gruppo_di_Spesa),
+                  nudge_x = 0.6, 
+                  size = 2.8, 
+                  direction = "y", 
+                  hjust = 0,
+                  segment.size = 0.2,
+                  xlim = c(2024.5, 2027), 
+                  show.legend = FALSE) +
+  scale_y_log10(labels = label_number(big.mark = ".", decimal.mark = ",", suffix = " euro"),
+                breaks = c(10, 25, 50, 100, 250, 500, 1000)) +  # Scala logaritmica per migliorare la leggibilità dei dati.
+  scale_x_continuous(breaks = seq(2014, 2024, 1), 
+                     expand = expansion(add = c(0.2, 3.5))) + 
+  scale_color_manual(values = as.vector(pals::polychrome(15))) + 
+  labs(title = "Evoluzione della spesa media familiare",
+       x = NULL, y = "Spesa media (euro)") +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(hjust = 0, face = "bold"),
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(color = "gray90")
+  )
+```
+
+
+---
+
+
+### DATASET 2: Spesa media famigliare per gruppi di spesa e numero di componenti del nucleo familiare relativi agli anni 2016, 2020 e 2024.
+Il dataset originale è stato suddiviso in tre dataframe distinti, uno per ogni anno di riferimento (2016, 2020 e 2024), per facilitare l'analisi comparativa tra i diversi periodi. Ogni dataframe contiene le stesse variabili, ma i dati sono filtrati in base all'anno di osservazione.
+
+\smallskip
+
+- Numero di righe: 13 per ogni dataframe
+
+- Numero di colonne: 7 per ogni dataframe 
+
+
+```{r, eval = FALSE}
+# Dati riferiti alla spesa media famigliare per gruppi di spesa e numero di componenti del nucleo familiare relativi agli anni 2016, 2020 e 2024.
+url_istat_spesa_famiglie <- "https://esploradati.istat.it/SDMXWS/rest/data/IT1,31_740_DF_DCCV_SPEMEFAM_COICOP_2018_3,1.0/A.IT.SPESA_MEDIA.01+02+03+04+05+06+07+08+09+10+11+12+13....N1+N2+N3+N4+N5_GE+TOT.../ALL/?detail=full&startPeriod=2014-01-01&endPeriod=2024-12-31&dimensionAtObservation=TIME_PERIOD"
+# Indirizzo SDMX per scaricare i dati.
+
+data_sdmx_spesa_famiglie <- readSDMX(url_istat_spesa_famiglie)
+df_grezzo_famiglie <- as.data.frame(data_sdmx_spesa_famiglie)
+
+# Sistemazione delle etichette relative ai gruppi di spesa e al numero di componenti del nucleo familiare, filtraggio dei dati per escludere i periodi non necessari, selezione delle colonne di interesse, rimozione dei duplicati e riorganizzazione del data frame in formato wide per ogni anno di riferimento (2016, 2020 e 2024).
+df_spesa_famiglie <- df_grezzo_famiglie |>
+  filter(REF_AREA %in% c("IT", "ITA", "IT1")) |>
   mutate(Gruppo_di_Spesa = case_when(
     COICOP_2018 == "01" ~ "Alimentari",
     COICOP_2018 == "02" ~ "Bevande alcoliche",
@@ -81,11 +251,72 @@ df_spesa_media <- df_raw_2 %>%
     COICOP_2018 == "12" ~ "Servizi assicurativi e finanziari",
     COICOP_2018 == "13" ~ "Beni e servizi per la cura della persona",
     TRUE ~ COICOP_2018
-  )) %>%
-  filter(obsTime %in% c("2018", "2021", "2024")) %>%
-  select(obsTime, Gruppo_di_Spesa, obsValue) %>%
-  distinct(Gruppo_di_Spesa, obsTime, .keep_all = TRUE) %>%
-  pivot_wider(names_from = obsTime, values_from = obsValue) %>% 
+  ),
+  NUMBER_HOUSEHOLD_COMP = case_when(
+    NUMBER_HOUSEHOLD_COMP == "N1" ~ "1 componente",
+    NUMBER_HOUSEHOLD_COMP == "N2" ~ "2 componenti",
+    NUMBER_HOUSEHOLD_COMP == "N3" ~ "3 componenti",
+    NUMBER_HOUSEHOLD_COMP == "N4" ~ "4 componenti",
+    NUMBER_HOUSEHOLD_COMP == "N5_GE" ~ "5 o più componenti",
+    NUMBER_HOUSEHOLD_COMP == "TOT" ~ "Totale famiglie",
+    TRUE ~ NUMBER_HOUSEHOLD_COMP
+  )
+) %>%
+    select(Gruppo_di_Spesa, NUMBER_HOUSEHOLD_COMP, obsTime, obsValue) %>%
+    distinct(Gruppo_di_Spesa, NUMBER_HOUSEHOLD_COMP, obsTime, .keep_all = TRUE)
+
+df_2016_famiglie <- df_spesa_famiglie %>%
+  filter(obsTime == "2016") %>%
+  select(-obsTime) %>%
+  pivot_wider(names_from = NUMBER_HOUSEHOLD_COMP, values_from = obsValue) %>%
   arrange(Gruppo_di_Spesa)
 
+df_2020_famiglie <- df_spesa_famiglie %>%
+  filter(obsTime == "2020") %>%
+  select(-obsTime) %>%
+  pivot_wider(names_from = NUMBER_HOUSEHOLD_COMP, values_from = obsValue) %>%
+  arrange(Gruppo_di_Spesa)
+
+df_2024_famiglie <- df_spesa_famiglie %>%
+  filter(obsTime == "2024") %>%
+  select(-obsTime) %>%  
+  pivot_wider(names_from = NUMBER_HOUSEHOLD_COMP, values_from = obsValue) %>%
+  arrange(Gruppo_di_Spesa)
+
+summary(df_2016_famiglie)
+summary(df_2020_famiglie)
+summary(df_2024_famiglie)
+
 ```
+
+\medskip
+
+**Tabella 2**: spesa media di ogni categoria di prodotto per numero di componenti del nucleo familiare negli anni 2016, 2020 e 2024.
+
+:::{.content-visible when-format="beamer"}
+\scriptsize
+| |**2016**|**2020**|**2024**|
+|---|---|---|---|
+|*1 componente*|€ 136,35|€ 131,62|€ 148,59|
+|*2 componenti*|€ 200,18|€ 181,57|€ 219,69|
+|*3 componenti*|€ 227,06|€ 208,39|€ 255,78|
+|*4 componenti*|€ 248,60|€ 223,83|€ 286,68|
+|*5 o più componenti*|€ 239,86|€ 236,74|€ 278,35|
+|*Totale famiglie*|€ 194,30|€ 177,87|€ 211,93|
+:::
+---
+
+
+# Domande specifiche di ricerca.
+
+1. Qual è la voce di spesa che ha registrato la variazione più rilevante e qual è la più influente sull'andamento complessivo? 
+
+**Analisi**: calcolo della variazione relativa percentuale tra 2016-2020, 2020-2024 e 2016-2024 e stima di un modello di regressione multipla per individuare quale delle voci di spesa risulta più influente sulla spesa totale.
+
+2. Le variazioni osservate durante il Covid si mantengono anche dopo la pandemia o si è assistito a un ritorno ai pattern di spesa pre-pandemia? 
+
+**Analisi**: stima di due modelli di regressione, uno con dummy impulso relative agli anni 2020-2021 e l'altro con una dummy step per il periodo post-pandemia.
+
+3. L'effetto è omogeneo tra famiglie diverse o varia in base alle loro caratteristiche?
+
+**Analisi**: test ANOVA per confrontare le variazioni di spesa tra famiglie con diverso numero di componenti.
