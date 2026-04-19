@@ -48,6 +48,20 @@ if (!requireNamespace("scales", quietly = TRUE)) {
 if (!requireNamespace("pals", quietly = TRUE)) {
   install.packages("pals")
 }
+if (!requireNamespace("randomcoloR", quietly = TRUE)) {
+  install.packages("randomcoloR")
+}
+if (!requireNamespace("scico", quietly = TRUE)) {
+  install.packages("scico")
+}
+if (!requireNamespace("Polychrome", quietly = TRUE)) {
+  install.packages("Polychrome")
+}
+
+if (!requireNamespace("RColorBrewer", quietly = TRUE)) {
+  install.packages("RColorBrewer")
+}
+
 
 library(kableExtra)
 library(rsdmx)
@@ -59,6 +73,11 @@ library(ggrepel)
 library(viridis)
 library(scales)
 library(pals)
+library(randomcoloR)
+library(scico)
+library(Polychrome)
+library(RColorBrewer)
+
 ```
 
 
@@ -115,8 +134,8 @@ df_spesa_media <- df_grezzo %>%
     COICOP_2018 == "01" ~ "Alimentari",
     COICOP_2018 == "02" ~ "Bevande alcoliche",
     COICOP_2018 == "03" ~ "Abbigliamento e calzature",
-    COICOP_2018 == "04" ~ "Abitazione, acqua, elettricità e combustibili",
-    COICOP_2018 == "05" ~ "Mobili, articoli e servizi per la casa",
+    COICOP_2018 == "04" ~ "Abitazione, bollette e combustibili",
+    COICOP_2018 == "05" ~ "Acquisti per la casa",
     COICOP_2018 == "06" ~ "Salute",
     COICOP_2018 == "07" ~ "Servizi di trasporto",
     COICOP_2018 == "08" ~ "Informazione e comunicazione",
@@ -197,7 +216,7 @@ ggplot(df_spesa_media_no_tot, aes(x = Anno, y = Spesa, color = Gruppo_di_Spesa))
                 breaks = c(10, 25, 50, 100, 250, 500, 1000)) +  # Scala logaritmica per migliorare la leggibilità dei dati.
   scale_x_continuous(breaks = seq(2014, 2024, 1), 
                      expand = expansion(add = c(0.2, 3.5))) + 
-  scale_color_manual(values = as.vector(pals::polychrome(15))) + 
+  scale_color_manual(values = grDevices::hcl(h = seq(15, 375, length.out = 13), c = 80, l = 55)) +
   labs(title = "Evoluzione della spesa media familiare",
        x = NULL, y = "Spesa media (euro)") +
   theme_minimal(base_size = 11) +
@@ -291,19 +310,27 @@ summary(df_2024_famiglie)
 
 \medskip
 
-**Tabella 2**: spesa media di ogni categoria di prodotto per numero di componenti del nucleo familiare negli anni 2016, 2020 e 2024.
 
-:::{.content-visible when-format="beamer"}
+\begin{table}[htbp]
+\centering
 \scriptsize
-| |**2016**|**2020**|**2024**|
-|---|---|---|---|
-|*1 componente*|€ 136,35|€ 131,62|€ 148,59|
-|*2 componenti*|€ 200,18|€ 181,57|€ 219,69|
-|*3 componenti*|€ 227,06|€ 208,39|€ 255,78|
-|*4 componenti*|€ 248,60|€ 223,83|€ 286,68|
-|*5 o più componenti*|€ 239,86|€ 236,74|€ 278,35|
-|*Totale famiglie*|€ 194,30|€ 177,87|€ 211,93|
-:::
+\begin{tabular}{lrrr}
+\toprule
+ & \textbf{2016} & \textbf{2020} & \textbf{2024} \\
+\midrule
+1 componente        & € 136,35 & € 131,62 & € 148,59 \\
+2 componenti        & € 200,18 & € 181,57 & € 219,69 \\
+3 componenti        & € 227,06 & € 208,39 & € 255,78 \\
+4 componenti        & € 248,60 & € 223,83 & € 286,68 \\
+5 o più componenti  & € 239,86 & € 236,74 & € 278,35 \\
+Totale famiglie     & € 194,30 & € 177,87 & € 211,93 \\
+\bottomrule
+\end{tabular}
+\caption{Spesa media di ogni categoria di prodotto per numero di componenti del nucleo familiare negli anni 2016, 2020 e 2024.}
+\label{tab:spesa_famiglie}
+\end{table}
+
+
 ---
 
 
