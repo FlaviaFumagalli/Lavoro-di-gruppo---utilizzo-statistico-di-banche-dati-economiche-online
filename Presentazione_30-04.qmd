@@ -1,0 +1,959 @@
+---
+title: "Cambiamenti nei pattern di spesa pre e post Covid-19 in Italia"
+subtitle: "Gruppo I"
+author: "Gabriele Fogli, Flavia Fumagalli, Mattia Gaiba, Elena Lenzi, Luca Sturniolo Ricci"
+date: today
+date-format: long
+lang: it
+format: 
+  beamer:
+    theme: "SimplePlus"
+    colortheme: "lily"
+    fonttheme: "structurebold"
+    fontsize: 10pt
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+```{r}
+# Installazione e caricamento dei pacchetti necessari per l'analisi dei dati e la visualizzazione dei risultati. Se i pacchetti non sono già presenti, vengono installati automaticamente.
+if (!requireNamespace("rsdmx", quietly = TRUE)) {
+  install.packages("rsdmx")
+}
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+if (!requireNamespace("tidyr", quietly = TRUE)) {
+  install.packages("tidyr")
+}
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+if (!requireNamespace("knitr", quietly = TRUE)) {
+  install.packages("knitr")
+}
+if (!requireNamespace("kableExtra", quietly = TRUE)) {
+  install.packages("kableExtra")
+}
+if (!requireNamespace("ggrepel", quietly = TRUE)) {
+  install.packages("ggrepel")
+}
+if (!requireNamespace("viridis", quietly = TRUE)) {
+  install.packages("viridis")
+}
+if (!requireNamespace("scales", quietly = TRUE)) {
+  install.packages("scales")
+}
+if (!requireNamespace("pals", quietly = TRUE)) {
+  install.packages("pals")
+}
+if (!requireNamespace("randomcoloR", quietly = TRUE)) {
+  install.packages("randomcoloR")
+}
+if (!requireNamespace("scico", quietly = TRUE)) {
+  install.packages("scico")
+}
+if (!requireNamespace("Polychrome", quietly = TRUE)) {
+  install.packages("Polychrome")
+}
+
+if (!requireNamespace("RColorBrewer", quietly = TRUE)) {
+  install.packages("RColorBrewer")
+}
+if (!requireNamespace("readr", quietly = TRUE)) {
+  install.packages("readr")
+}
+if (!requireNamespace("httr", quietly = TRUE)) {
+  install.packages("httr")
+}
+if (!requireNamespace("data.table", quietly = TRUE)) {
+  install.packages("data.table")
+}
+if (!requireNamespace("gt", quietly = TRUE)) {
+  install.packages("gt")
+}
+if (!requireNamespace("FuzzyPovertyR", quietly = TRUE)) {
+  install.packages("FuzzyPovertyR")
+}
+if (!requireNamespace("sf", quietly = TRUE)) {
+  install.packages("sf")
+}
+if (!requireNamespace("rnaturalearth", quietly = TRUE)) {
+  install.packages("rnaturalearth")
+}
+if (!requireNamespace("giscoR", quietly = TRUE)) {
+  install.packages("giscoR")
+}
+if (!requireNamespace("ggdist", quietly = TRUE)) {
+  install.packages("ggdist")
+}
+
+library(kableExtra)
+library(rsdmx)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(ggrepel)
+library(viridis)
+library(scales)
+library(pals)
+library(randomcoloR)
+library(scico)
+library(Polychrome)
+library(RColorBrewer)
+library(readr)
+library(httr)
+library(data.table)
+library(gt)
+library(FuzzyPovertyR)
+library(sf)
+library(rnaturalearth)
+library(giscoR)
+library(ggdist)
+```
+
+# Ricapitolando...
+
+- **Obiettivo**: l'analisi è volta a comprendere in che misura la pandemia da Covid-19 ha modificato la composizione della spesa delle famiglie italiane. 
+
+- **Dati**: microdati dell'indagine HBS (*Household Budget Survey*) forniti dall'ISTAT per gli anni dal 2014 al 2024.
+
+\medskip
+
+## Cosa è emerso dall'analisi esplorativa?
+
+- La spesa totale per consumi ha mostrato un andamento altalenante, con una contrazione rilevante nel 2020 (da **€2.605** (2019) a **€2.425** (2020)) seguita da una ripresa nei successivi anni.
+
+- Le categorie di consumo più colpite dalla pandemia sono state quelle legate alla _cultura_ e alla _ristorazione_, mentre sono aumentate le spese per _alimentari_ e _acquisti per l'abitazione_.
+
+---
+
+# Evoluzione del dataset.
+```{r, cache = TRUE}
+# Caricamento dei dati attraverso web scraping.
+# Viene definito un vettore di URL che racchiude il link ai file zip contenenti i microdati dell'indagine HBS (Household Budget Survey) dell'Istat per gli anni dal 2014 al 2024.
+urls <- c("https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2014%2F02%2F02.zip&filename=HBS_2014_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2015%2F02%2F02.zip&filename=HBS_2015_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2016%2F02%2F02.zip&filename=HBS_2016_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2017%2F02%2F02.zip&filename=HBS_2017_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2018%2F02%2F02.zip&filename=HBS_2018_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2019%2F02%2F02.zip&filename=HBS_2019_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2020%2F02%2F02.zip&filename=HBS_2020_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2021%2F02%2F02.zip&filename=HBS_2021_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2022%2F01%2F01.zip&filename=HBS_2022_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2023%2F01%2F01.zip&filename=HBS_2023_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2024%2F01%2F01.zip&filename=HBS_2024_IT.zip"
+)
+
+# I dati sono scaricati e trasformati in tibble. Viene definita una funzione che prende in input un URL, scarica il file zip, estrae i file al suo interno, individua il primo file con estensione .csv, .txt o .dat, e lo legge in un tibble. Se il download o la lettura falliscono, la funzione restituisce NULL.
+
+scarica_e_leggi <- function(url) {
+  temp_zip <- tempfile(fileext = ".zip")
+  temp_dir <- tempdir()
+  res <- GET(url, write_disk(temp_zip, overwrite = TRUE))
+
+  if (status_code(res) == 200) {
+    file_estratti <- unzip(temp_zip, exdir = temp_dir)
+    file_da_caricare <- file_estratti[grep("\\.(csv|txt|dat)$", file_estratti, ignore.case = TRUE)][1]
+    
+    if (!is.na(file_da_caricare)) {
+      df <- read_delim(file_da_caricare, 
+                       delim = NULL,
+                       show_col_types = FALSE) %>% 
+            as_tibble()
+      
+      return(df)
+    }
+  }
+  return(NULL)
+}
+
+# Vengono definiti 11 dataset distinti in modo da poter successivamente selezionare le variabili di interesse per ogni anno e creare un dataset unificato.
+for (url in urls) {
+  nome_variabile <- sub(".zip", "", sub(".*filename=", "", url))
+  dati_tibble <- scarica_e_leggi(url)
+  
+  if (!is.null(dati_tibble)) {
+    assign(nome_variabile, dati_tibble, envir = .GlobalEnv)
+    message(paste("Creato tibble:", nome_variabile))
+  }
+}
+```
+
+```{r, cache = TRUE}
+# Selezione delle variabili di interesse.
+# Per ogni anno vengono considerate solo le colonne relative al numero di componenti del nucleo familiare, alla spesa totale per consumi e alle spese per specifiche categorie di consumo (13 categorie secondo la classificazione COICOP 2018).
+
+# 2014
+dati_2014 <- as.data.frame(HBS_2014_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+# Creazione di un dataset in cui le variabili sono convertive in formato numerico.
+dati_2014[] <- lapply(dati_2014, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2015
+dati_2015 <- as.data.frame(HBS_2015_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2015[] <- lapply(dati_2015, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2016
+dati_2016 <- as.data.frame(HBS_2016_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2016[] <- lapply(dati_2016, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2017
+dati_2017 <- as.data.frame(HBS_2017_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2017[] <- lapply(dati_2017, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2018
+dati_2018 <- as.data.frame(HBS_2018_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2018[] <- lapply(dati_2018, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2019
+dati_2019 <- as.data.frame(HBS_2019_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2019[] <- lapply(dati_2019, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2020
+dati_2020 <- as.data.frame(HBS_2020_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2020[] <- lapply(dati_2020, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2021
+dati_2021 <- as.data.frame(HBS_2021_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2021[] <- lapply(dati_2021, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2022
+dati_2022 <- as.data.frame(HBS_2022_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str", "d_01", "d_02", "d_03", "d_04_str", "d_05", "d_06", "d_07", "d_08", "d_09", "d_10", "d_11", "d_12", "d_13")])
+dati_2022[] <- lapply(dati_2022, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2023
+dati_2023 <- as.data.frame(HBS_2023_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str", "d_01", "d_02", "d_03", "d_04_str", "d_05", "d_06", "d_07", "d_08", "d_09", "d_10", "d_11", "d_12", "d_13")])
+dati_2023[] <- lapply(dati_2023, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2024
+dati_2024 <- as.data.frame(HBS_2024_IT[, c("c_Ncmp_fatto", "rgn", "sp_tot_str", "d_01", "d_02", "d_03", "d_04_str", "d_05", "d_06", "d_07", "d_08", "d_09", "d_10", "d_11", "d_12", "d_13")])
+dati_2024[] <- lapply(dati_2024, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+
+# Definizione di un dataset unificato che contiene i dati di tutti gli anni, con una colonna aggiuntiva per indicare l'anno di riferimento.
+standardize_names <- function(df) {
+  names(df) <- sub("_rico$", "", names(df))
+  df
+}
+
+lista <- list(dati_2014, dati_2015, dati_2016, dati_2017, dati_2018,
+              dati_2019, dati_2020, dati_2021, dati_2022, dati_2023, dati_2024)
+anni  <- 2014:2024
+
+lista_std <- Map(function(df, yr) {
+  df2 <- standardize_names(df)
+  df2$anno <- yr
+  df2
+}, lista, anni)
+
+dati_unificati <- bind_rows(lista_std)
+
+
+# Cambiamento dei nomi delle colonne per renderli più leggibili.
+colnames(dati_unificati) <- c("Numero di componenti per famiglia", "Regione", "Spesa totale", "Alimentari e bevande", "Alcolici e tabacco", "Abbigliamento e calzature", "Abitazione, bolette e combustibili", "Acquisti per l'abitazione", "Salute", "Trasporti", "Informazione e comunicazione", "Ricreazione, sport e cultura", "Istruzione", "Ristorazione e alberghi", "Servizi assicurativi e finanziari", "Beni e servizi per la cura della persona", "Anno") 
+
+# Decodifica dei codici delle regioni.
+dati_unificati$Regione <- recode(dati_unificati$Regione,
+  "1" = "Piemonte",
+  "2" = "Valle d'Aosta",
+  "3" = "Lombardia",
+  "4" = "Trentino-Alto Adige",
+  "5" = "Veneto",
+  "6" = "Friuli-Venezia Giulia",
+  "7" = "Liguria",
+  "8" = "Emilia-Romagna",
+  "9" = "Toscana",
+  "10" = "Umbria",
+  "11" = "Marche",
+  "12" = "Lazio",
+  "13" = "Abruzzo",
+  "14" = "Molise",
+  "15" = "Campania",
+  "16" = "Puglia",
+  "17" = "Basilicata",
+  "18" = "Calabria",
+  "19" = "Sicilia",
+  "20" = "Sardegna"
+)
+
+dati_unificati$`Numero di componenti per famiglia` <- as.integer(dati_unificati$`Numero di componenti per famiglia`)
+
+```
+
+- *Numero di righe*: 240158
+
+- *Numero di colonne*: 17
+
+Al fine di realizzare un'analisi più approfondita sul tema, è stata inserita una colonna aggiuntiva per indicare la **regione di provenienza** della famiglia intervistata, decodificando i codici numerici presenti nei dataset originali. La tabella seguente mostra le prime 6 righe del dataset unificato, con i nomi delle colonne modificati per renderli più leggibili e comprensibili.
+
+\medskip
+
+\begin{table}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+
+\resizebox{\textwidth}{!}{
+\begin{tabular}{r r r r r r r r r r r r r r r r r}
+\toprule
+\makecell{N \\ comp.} & 
+\makecell{Regione} & 
+\makecell{Spesa \\ totale} & 
+\makecell{Alimentari \\ bevande} & 
+\makecell{Alcolici \\ tabacco} & 
+\makecell{Abbigl. \\ calzature} & 
+\makecell{Abitazione \\ bollette} & 
+\makecell{Acquisti \\ casa} & 
+\makecell{Salute} & 
+\makecell{Trasporti} & 
+\makecell{Comunic.} & 
+\makecell{Ricreaz. \\ cultura} & 
+\makecell{Istruz.} & 
+\makecell{Ristoraz. \\ alberghi} & 
+\makecell{Servizi \\ fin.} & 
+\makecell{Cura \\ persona} & 
+Anno \\
+\midrule
+1 & Piemonte & 1873.37 & 180.79 & 0.00 & 0.00 & 911.47 & 0.00 & 0.00 & 172.98 & 87.89 & 269.42 & 19.40 & 157.36 & 26.78 & 47.27 & 2014 \\
+1 & Emilia-Romagna & 1751.62 & 205.29 & 72.23 & 170.07 & 792.70 & 90.40 & 0.01 & 107.01 & 26.02 & 34.35 & 0.08 & 19.39 & 82.06 & 152.00 & 2014 \\
+4 & Campania & 2244.13 & 455.18 & 0.00 & 30.27 & 663.87 & 14.54 & 161.28 & 277.97 & 119.38 & 230.63 & 0.38 & 143.00 & 51.40 & 96.22 & 2014 \\
+4 & Molise & 2436.11 & 741.64 & 13.60 & 27.58 & 523.61 & 73.15 & 113.35 & 308.54 & 124.18 & 79.40 & 212.60 & 0.00 & 76.05 & 142.39 & 2014 \\
+2 & Basilicata & 1693.54 & 469.78 & 0.00 & 41.38 & 572.95 & 108.56 & 157.40 & 124.14 & 61.34 & 11.36 & 0.02 & 11.24 & 47.14 & 88.25 & 2014 \\
+3 & Veneto & 3220.33 & 1152.43 & 146.11 & 0.00 & 810.29 & 24.50 & 33.38 & 397.96 & 42.77 & 0.00 & 0.00 & 125.57 & 170.85 & 316.49 & 2014 \\
+\bottomrule
+\end{tabular}
+}
+
+\caption{head(dati\_unificati)}
+\end{table}
+
+---
+
+# Variazioni nelle voci di spesa.
+
+Per analizzare l'evoluzione delle abitudini di spesa si è calcolata la **variazione media percentuale** dei budget share tra il 2014 e il 2024.
+
+
+\footnotesize
+\begin{equation}
+\Delta \% = \left[\left( \frac{BS_t}{BS_0} \right)^{\frac{1}{t}} -1 \right] \cdot 100 
+\end{equation}
+
+\smallskip
+
+```{r}
+# Calcolo della spesa media totale per ogni anno.
+spesa_media_annuale <- dati_unificati %>%
+  group_by(Anno) %>%
+  summarise(Spesa_media = mean(`Spesa totale`, na.rm = TRUE))
+
+# Calcolo della spesa media annuale per ogni categoria di consumo.
+categorie_media_annuale <- dati_unificati %>%
+  group_by(Anno) %>%
+  summarise(
+    Alimentari_bevande = mean(`Alimentari e bevande`, na.rm = TRUE),
+    Alcolici_tabacco = mean(`Alcolici e tabacco`, na.rm = TRUE),
+    Abbigliamento_calzature = mean(`Abbigliamento e calzature`, na.rm = TRUE),
+    Abitazione_bollette = mean(`Abitazione, bolette e combustibili`, na.rm = TRUE),
+    Acquisti_casa = mean(`Acquisti per l'abitazione`, na.rm = TRUE),
+    Salute = mean(`Salute`, na.rm = TRUE),
+    Trasporti = mean(Trasporti, na.rm = TRUE),
+    Comunicazione = mean(`Informazione e comunicazione`, na.rm = TRUE),
+    Ricreazione_cultura = mean(`Ricreazione, sport e cultura`, na.rm = TRUE),
+    Istruzione = mean(Istruzione, na.rm = TRUE),
+    Ristorazione_alberghi = mean(`Ristorazione e alberghi`, na.rm = TRUE),
+    Servizi_finanziari = mean(`Servizi assicurativi e finanziari`, na.rm = TRUE),
+    Cura_persona = mean(`Beni e servizi per la cura della persona`, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Budget share di ogni categoria di consumo rispetto alla spesa totale per consumi.
+categorie_budget_share <- categorie_media_annuale %>%
+  mutate(
+    Alimentari_bevande = Alimentari_bevande / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Alcolici_tabacco = Alcolici_tabacco / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Abbigliamento_calzature = Abbigliamento_calzature / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Abitazione_bollette = Abitazione_bollette / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Acquisti_casa = Acquisti_casa / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Salute = Salute / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Trasporti = Trasporti / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Comunicazione = Comunicazione / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Ricreazione_cultura = Ricreazione_cultura / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Istruzione = Istruzione / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Ristorazione_alberghi = Ristorazione_alberghi / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Servizi_finanziari = Servizi_finanziari / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Cura_persona = Cura_persona / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)]
+  )
+
+# Calcolo della variazione media percentuale delle categorie di consumo tra il 2014 e il 2024.
+variazione_percentuale <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+
+# Creazione di una tabella per visualizzare in modo chiaro e leggibile la variazione media percentuale annua dei budget share per ogni categoria di consumo.
+tabella_pulita <- variazione_percentuale %>%
+  pivot_longer(cols = everything(), 
+               names_to = "Categoria", 
+               values_to = "Variazione_Media") %>%
+  mutate(Categoria = gsub("_", " ", Categoria))
+
+tabella_pulita %>%
+  mutate(Variazione_Media = round(Variazione_Media, 2)) %>%
+  kable(
+    format = "latex",
+    col.names = c("Categoria di Spesa", "Var. Media Annua (%)"),
+    align = c("l", "c"),
+    booktabs = TRUE,
+    caption = "\\vspace{-10pt} \\captionsetup{skip=2pt} Variazione media percentuale annua dei budget share (2014-2024)", # Riduzione dello spazio tra la tabella e la didascalia.
+    linesep = "" # Rimozione delle linee di separazione tra le righe della tabella.
+  ) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    full_width = FALSE,
+    font_size = 6
+  ) %>%
+  row_spec(1:nrow(tabella_pulita), extra_latex_after = "\\\\[-2.5em]") %>% 
+  column_spec(1, width = "4cm") %>%
+  column_spec(2, bold = TRUE, width = "2.7cm",
+              color = ifelse(tabella_pulita$Variazione_Media > 0, "#228B22", "#D32F2F")) %>% # Disposizione e formattazione delle colonne, con evidenziazione in verde per variazioni positive e in rosso per variazioni negative.
+  row_spec(0, background = "#1D2E54", color = "white", bold = TRUE) # Definizione dello stile per l'intestazione della tabella.
+```
+
+---
+
+## Variazioni per periodo.
+
+Suddividendo il periodo di osservazione in tre fasi (2014-2019, 2019-2020, e 2021-2024), è possibile evidenziare come la pandemia abbia influenzato in modo differente le abitudini di consumo, con alcune categorie che hanno subito un'accelerazione nella crescita o una contrazione più marcata a partire dal 2020.
+
+```{r}
+# Variazione media percentuale per il periodo 2014-2019.
+var_pre <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  filter(Anno <= 2019) %>%
+  summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+
+# Variazione media percentuale per il periodo 2019-2020.
+var_durante <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  filter(Anno >= 2019 & Anno <= 2020) %>%
+  summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+
+# Variazione media percentuale per il periodo 2021-2024.
+var_post <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  filter(Anno >= 2021) %>%
+    summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+
+# Creazione di una tabella unificata che mostra le variazioni percentuali per i tre periodi di osservazione.
+tab_unica <- rbind(var_pre, var_durante[1,], var_post[1,])
+tabella_finale <- as.data.frame(t(tab_unica))
+colnames(tabella_finale) <- c("Pre-Covid (14-19)", "Shock (19-20)", "Post-Covid (21-24)")
+rownames(tabella_finale) <- gsub("_", " ", rownames(tabella_finale))
+
+# Selezione delle colonne con le variazioni più significative.
+idx_alimentari <- which(rownames(tabella_finale) == "Alimentari bevande")
+idx_abitazione <- which(rownames(tabella_finale) == "Abitazione bollette")
+idx_cultura    <- which(rownames(tabella_finale) == "Ricreazione cultura")
+idx_ristorazione <- which(rownames(tabella_finale) == "Ristorazione alberghi")
+
+tabella_finale %>%
+  mutate(across(everything(), ~ round(.x, 2))) %>%
+  kable(
+    format = "latex",
+    booktabs = TRUE,
+    align = "cccc", # Allineamento centrato per tutte le colonne.
+    caption = "\\vspace{-10pt} Focus sulle variazioni strutturali e congiunturali", # Riduzione dello spazio tra la tabella e la didascalia.
+    linesep = "" 
+  ) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    full_width = FALSE,
+    font_size = 6
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1D2E54") %>% # Intestazione della tabella con sfondo blu scuro e testo bianco.
+  # Evidenziazione delle righe con variazioni significative, utilizzando colori diversi per categorie rigide (verde) e flessibili (rosso).
+  row_spec(idx_alimentari, background = "#E8F5E9") %>% 
+  row_spec(idx_abitazione, background = "#E8F5E9") %>%
+  row_spec(idx_cultura, background = "#FDEDEC") %>%
+  row_spec(idx_ristorazione, background = "#FDEDEC") %>%
+  column_spec(2, bold = TRUE, width = "2cm", color = ifelse(tabella_finale[,1] > 0, "#228B22", "#D32F2F")) %>%
+  column_spec(3, bold = TRUE, width = "2cm", color = ifelse(tabella_finale[,2] > 0, "#228B22", "#D32F2F")) %>%
+  column_spec(4, bold = TRUE, width = "2cm", color = ifelse(tabella_finale[,3] > 0, "#228B22", "#D32F2F")) %>%
+  footnote(general = "Evidenziati in verde i consumi domestici/rigidi e in rosso i consumi sociali/flessibili.",
+           general_title = "Legenda:", footnote_as_chunk = TRUE)
+```
+
+---
+
+\medskip
+
+```{r, fig.width = 6, fig.height = 4, out.width = "75%", fig.align = "center"}
+# Creazione di un dataset per il grafico a barre divergenti, con una colonna che indica se la variazione è positiva (consumi rigidi) o negativa (consumi flessibili).
+df_graph <- data.frame(
+  Categoria = rownames(tabella_finale),
+  Variazione = tabella_finale$`Shock (19-20)`
+) %>%
+  mutate(Tipo = ifelse(Variazione > 0, "Consumi Rigidi (Aumento)", "Consumi Flessibili (Calo)"))
+
+# Creazione del grafico a barre divergenti.
+ggplot(df_graph, aes(x = reorder(Categoria, Variazione), y = Variazione, fill = Tipo)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  coord_flip() + 
+  scale_fill_manual(values = c("Consumi Rigidi (Aumento)" = "#228B22", 
+                               "Consumi Flessibili (Calo)" = "#D32F2F")) +
+  theme_minimal() +
+  labs(
+    title = "Lo Shock del 2020: Variazione dei Budget Share", width = 40,
+    subtitle = "Confronto tra categorie rigide e flessibili",
+    x = "",
+    y = "Variazione Percentuale (%)",
+    fill = ""
+  ) +
+  theme(
+    text = element_text(size = 10),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    plot.margin = margin(10, 20, 10, 10) 
+  )
+```
+
+\smallskip
+
+- **Categorie rigide**: Alimentari (+9.2%) e Abitazione (+9.8%) mostrano la loro natura di beni primari, con una crescita più marcata durante la pandemia.
+
+- **Categorie flessibili**: Ristorazione (-28.7%) e Cultura (-19.1%) subiscono crolli a doppia cifra, confermando la vulnerabilità dei consumi discrezionali.
+
+---
+
+# Sviluppo della spesa nelle regioni italiane.
+
+La seguente mappa coropletica illustra la distribuzione territoriale della spesa media mensile, evidenziando come lo shock pandemico del 2020 abbia agito in modo asimmetrico sui bilanci regionali.
+
+\smallskip
+
+```{r, fig.width = 10, fig.height = 6, out.width = "80%", fig.align = "center"}
+# Creazione dataset con spesa media per regione e anno.
+spesa_media_regionale <- dati_unificati %>%
+  group_by(Regione, Anno) %>%
+  summarise(Spesa_Media = mean(`Spesa totale`, na.rm = TRUE), .groups = "drop")
+
+# Grafico coropletico per le regioni italiane utilizzando i dati di spesa media per regione e anno.
+italy_map <- ne_states(country = "italy", returnclass = "sf") %>%
+  group_by(region) %>% # Raggruppamento per regione.
+  summarise(geometry = st_union(geometry)) %>%
+  ungroup() %>%
+  # Ridefinizione dei nomi delle regioni per allineare i dataset.
+  mutate(region = case_match(region,
+    "Apulia" ~ "Puglia",
+    "Sicily" ~ "Sicilia",
+    "Sardinia" ~ "Sardegna",
+    "Tuscany" ~ "Toscana",
+    "Latium" ~ "Lazio",
+    "Piedmont" ~ "Piemonte",
+    "Lombardy" ~ "Lombardia",
+    "Veneto" ~ "Veneto",
+    "Emilia-Romagna" ~ "Emilia-Romagna",
+    "Campania" ~ "Campania",
+    "Calabria" ~ "Calabria",
+    "Abruzzo" ~ "Abruzzo",
+    "Molise" ~ "Molise",
+    "Basilicata" ~ "Basilicata",
+    "Marche" ~ "Marche",
+    "Umbria" ~ "Umbria",
+    "Liguria" ~ "Liguria",
+    "Friuli-Venezia Giulia" ~ "Friuli-Venezia Giulia",
+    "Valle d'Aosta/Vallée d'Aoste" ~ "Valle d'Aosta",
+    "Trentino-Alto Adige/Südtirol" ~ "Trentino-Alto Adige",
+    .default = region
+  )) %>%
+  rename(Regione = region)
+
+# Selezione degli anni di interesse per la visualizzazione.
+anni_interesse <- c(2015, 2016, 2019, 2020, 2023, 2024)
+
+mappa_data <- italy_map %>%
+  left_join(spesa_media_regionale %>% filter(Anno %in% anni_interesse), by = "Regione") %>%
+  filter(!is.na(Anno))
+ggplot(data = mappa_data) +
+  geom_sf(aes(fill = Spesa_Media), color = "white", size = 0.1) +
+  facet_wrap(~Anno, ncol = 3) +  # Per visualizzare le mappe per ogni anno in un layout a griglia.
+  scale_fill_viridis_c(
+    option = "viridis", 
+    name = "Spesa Media (EUR)",
+    labels = scales::label_dollar(suffix = "", prefix = "", big.mark = ".", decimal.mark = ","),
+    guide = guide_colorbar(barwidth = 0.6, barheight = 8, title.position = "top", title.hjust = 0.5)
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "#1D2E54"),
+    strip.text = element_text(color = "white", size = 8, face = "bold"),
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, size = 10)
+  ) 
+```
+
+---
+
+## Cosa suggerisce la mappa?
+
+L'analisi territoriale conferma un **divario Nord-Sud** persistente nel decennio; le regioni settentrionali mantengono una spesa media sensibilmente più elevata, riflettendo una maggiore capacità di consumo e redditi medi più alti.
+
+\bigskip
+
+- _Shock del 2020_: il cambiamento cromatico verso tonalità scure nel 2020 è determinato da una riduzione generalizzata della spesa complessiva. Il calo è trainato dal crollo della spesa flessibile (Ristorazione -28,7%), solo parzialmente ammortizzato dalla rigidità dei beni alimentari.
+
+\medskip
+
+- _Ripresa_: il ritorno a colori più chiari nel 2023-2024 indica che la spesa è risalita sia per la ripresa delle attività dopo la pandemia, sia per il rincaro dei prezzi dovuto all'inflazione.
+
+# Spesa media per l'abitazione.
+
+L'analisi del budget share mostra la rigidità della spesa per l'abitazione che, nel 2020, aumenta il proprio peso relativo sul budget familiare a causa della drastica riduzione dei consumi extra-domestici.
+
+\bigskip
+
+```{r, fig.width = 10, fig.height = 6, out.width = "70%", fig.align = "center"}
+# Creazione di un dataset con l'evoluzione del budget share relativo all'abitazione per regione e anno.
+spesa_media_reg_abitazione <- dati_unificati %>%
+  group_by(Regione, Anno) %>%
+  summarise(Spesa_Media_Abitazione = mean(`Abitazione, bolette e combustibili`, na.rm = TRUE), .groups = "drop")
+
+budget_share_reg_abitazione <- spesa_media_reg_abitazione %>%
+  left_join(spesa_media_regionale, by = c("Regione", "Anno")) %>%
+  mutate(Budget_Share_Abitazione = Spesa_Media_Abitazione / Spesa_Media)
+budget_share_reg_abitazione <- budget_share_reg_abitazione [,-c(3,4)]
+budget_share_reg_abitazione $ Budget_Share_Abitazione <- budget_share_reg_abitazione $ Budget_Share_Abitazione * 100
+
+# Grafico coropletico.
+italy_map <- ne_states(country = "italy", returnclass = "sf") %>%
+  group_by(region) %>% 
+  summarise(geometry = st_union(geometry)) %>%
+  ungroup() %>%
+  mutate(region = case_match(region,
+    "Apulia" ~ "Puglia",
+    "Sicily" ~ "Sicilia",
+    "Sardinia" ~ "Sardegna",
+    "Tuscany" ~ "Toscana",
+    "Latium" ~ "Lazio",
+    "Piedmont" ~ "Piemonte",
+    "Lombardy" ~ "Lombardia",
+    "Veneto" ~ "Veneto",
+    "Emilia-Romagna" ~ "Emilia-Romagna",
+    "Campania" ~ "Campania",
+    "Calabria" ~ "Calabria",
+    "Abruzzo" ~ "Abruzzo",
+    "Molise" ~ "Molise",
+    "Basilicata" ~ "Basilicata",
+    "Marche" ~ "Marche",
+    "Umbria" ~ "Umbria",
+    "Liguria" ~ "Liguria",
+    "Friuli-Venezia Giulia" ~ "Friuli-Venezia Giulia",
+    "Valle d'Aosta/Vallée d'Aoste" ~ "Valle d'Aosta",
+    "Trentino-Alto Adige/Südtirol" ~ "Trentino-Alto Adige",
+    .default = region
+  )) %>%
+  rename(Regione = region)
+
+anni_interesse <- c(2015, 2016, 2019, 2020, 2023, 2024)
+
+mappa_data <- italy_map %>%
+  left_join(budget_share_reg_abitazione %>% filter(Anno %in% anni_interesse), by = "Regione") %>%
+  filter(!is.na(Anno))
+ggplot(data = mappa_data) +
+  geom_sf(aes(fill = Budget_Share_Abitazione), color = "white", size = 0.1) +
+  facet_wrap(~Anno, ncol = 3) + 
+scale_fill_viridis_c(
+    option = "mako", 
+    name = "Budget Share",
+    labels = scales::label_number(
+      suffix = "%", 
+      decimal.mark = ",", 
+      accuracy = 0.1 
+    ),
+    guide = guide_colorbar(
+      barwidth = 0.6,  
+      barheight = 8,     
+      title.position = "top", 
+      title.hjust = 0.5,
+      nbin = 5          
+    )
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "#1D2E54"),
+    strip.text = element_text(color = "white", size = 8, face = "bold"),
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, size = 10)
+  ) 
+```
+
+
+
+# Spesa media per i ristoranti e gli alberghi.
+
+La mappa del 2020 evidenzia il crollo drastico della spesa per servizi ricettivi e ristorazione, che subisce la contrazione più violenta tra tutte le voci di consumo, seguita da un marcato rimbalzo nel biennio 2023-2024.
+
+\bigskip
+
+```{r, fig.width = 10, fig.height = 6, out.width = "70%", fig.align = "center"}
+# Creazione di un dataset con l'evoluzione del budget share relativo ai ristoranti e agli alberghi per regione e anno.
+spesa_media_reg_ristor <- dati_unificati %>%
+  group_by(Regione, Anno) %>%
+  summarise(Spesa_Media_Ristor = mean(`Ristorazione e alberghi`, na.rm = TRUE), .groups = "drop")
+
+budget_share_reg_ristor <- spesa_media_reg_ristor %>%
+  left_join(spesa_media_regionale, by = c("Regione", "Anno")) %>%
+  mutate(Budget_Share_Ristor = Spesa_Media_Ristor / Spesa_Media)
+budget_share_reg_ristor <- budget_share_reg_ristor [,-c(3,4)]
+budget_share_reg_ristor $ Budget_Share_Ristor <- budget_share_reg_ristor $ Budget_Share_Ristor * 100
+
+italy_map <- ne_states(country = "italy", returnclass = "sf") %>%
+  group_by(region) %>% 
+  summarise(geometry = st_union(geometry)) %>%
+  ungroup() %>%
+  mutate(region = case_match(region,
+    "Apulia" ~ "Puglia",
+    "Sicily" ~ "Sicilia",
+    "Sardinia" ~ "Sardegna",
+    "Tuscany" ~ "Toscana",
+    "Latium" ~ "Lazio",
+    "Piedmont" ~ "Piemonte",
+    "Lombardy" ~ "Lombardia",
+    "Veneto" ~ "Veneto",
+    "Emilia-Romagna" ~ "Emilia-Romagna",
+    "Campania" ~ "Campania",
+    "Calabria" ~ "Calabria",
+    "Abruzzo" ~ "Abruzzo",
+    "Molise" ~ "Molise",
+    "Basilicata" ~ "Basilicata",
+    "Marche" ~ "Marche",
+    "Umbria" ~ "Umbria",
+    "Liguria" ~ "Liguria",
+    "Friuli-Venezia Giulia" ~ "Friuli-Venezia Giulia",
+    "Valle d'Aosta/Vallée d'Aoste" ~ "Valle d'Aosta",
+    "Trentino-Alto Adige/Südtirol" ~ "Trentino-Alto Adige",
+    .default = region
+  )) %>%
+  rename(Regione = region)
+
+anni_interesse <- c(2015, 2016, 2019, 2020, 2023, 2024)
+
+mappa_data <- italy_map %>%
+  left_join(budget_share_reg_ristor %>% filter(Anno %in% anni_interesse), by = "Regione") %>%
+  filter(!is.na(Anno))
+ggplot(data = mappa_data) +
+  geom_sf(aes(fill = Budget_Share_Ristor), color = "white", size = 0.1) +
+  facet_wrap(~Anno, ncol = 3) + 
+scale_fill_viridis_c(
+    option = "magma", 
+    name = "Budget Share",
+    labels = scales::label_number(
+      suffix = "%", 
+      decimal.mark = ",", 
+      accuracy = 0.1 
+    ),
+    guide = guide_colorbar(
+      barwidth = 0.6,  
+      barheight = 8,     
+      title.position = "top", 
+      title.hjust = 0.5,
+      nbin = 5          
+    )
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "#1D2E54"),
+    strip.text = element_text(color = "white", size = 8, face = "bold"),
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, size = 10)
+  ) 
+
+```
+
+---
+
+# Differenziazione delle famiglie per numero di componenti.
+
+Per operare un confronto più corretto tra le famiglie con un numero diverso di componenti, si ricorre alla **scala di equivalenza Carbonaro** che permette di standardizzare la spesa in base alla grandezza del nucleo familiare.
+
+\medskip
+
+```{r, fig.width = 8, fig.height = 5, out.width = "70%", fig.align = "center"}
+# Boxplot per visualizzarne la distribuzione della spesa per numero di componenti prima della standardizzazione.
+ggplot(dati_unificati, aes(x = factor(`Numero di componenti per famiglia`), y = `Spesa totale`, fill = factor(`Numero di componenti per famiglia`))) +
+  geom_boxplot(
+    width = 0.6, 
+    outlier.shape = NA, 
+    color = "#1d2e54", 
+    size = 0.7,
+    alpha = 0.8
+  ) +
+  coord_cartesian(ylim = c(0, 4500)) +
+  scale_fill_brewer(palette = "YlOrRd") +
+  theme_minimal(base_size = 12) +
+  labs(
+    title = "Distribuzione della Spesa Totale per Numero di Componenti",
+    subtitle = "Prima della standardizzazione con la scala di Carbonaro",
+    x = "Componenti del Nucleo Familiare",
+    y = "Spesa Totale Mensile (EUR)"
+  ) +
+  theme(
+    legend.position = "none", 
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16, color = "#1d2e54"),
+    plot.subtitle = element_text(hjust = 0.5, size = 11, color = "#555555", margin = margin(b = 15)),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title = element_text(face = "bold", color = "#1d2e54"),
+    axis.text = element_text(color = "black", size = 10),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+```
+
+---
+
+\bigskip
+
+```{r, fig.width = 8, fig.height = 5, out.width = "70%", fig.align = "center"}
+# Coefficiente di equivalenza secondo la scala di Carbonaro (ISTAT).
+scala_carbonaro <- data.frame(
+  Componenti = c(1, 2, 3, 4, 5, 6, 7),
+  Coefficiente = c(0.60, 1.00, 1.33, 1.63, 1.90, 2.16, 2.40)
+)
+
+# Standardizzazione della spesa totale per numero di componenti utilizzando la scala di Carbonaro.
+dati_standardizzati <- dati_unificati %>%
+  left_join(scala_carbonaro, by = c("Numero di componenti per famiglia" = "Componenti")) %>%
+  mutate(Spesa_Equivalente = `Spesa totale` / Coefficiente)
+
+# Boxplot per visualizzare la distribuzione della spesa equivalente per numero di componenti dopo la standardizzazione.
+ggplot(dati_standardizzati, aes(x = factor(`Numero di componenti per famiglia`), y = Spesa_Equivalente, fill = factor(`Numero di componenti per famiglia`))) +
+  geom_boxplot(
+    width = 0.6, 
+    outlier.shape = NA, 
+    color = "#1d2e54", 
+    size = 0.7,
+    alpha = 0.8
+  ) +
+  coord_cartesian(ylim = c(0, 4500)) +
+  scale_fill_brewer(palette = "GnBu") +
+  theme_minimal(base_size = 12) +
+  labs(
+    title = "Analisi della Spesa Equivalente",
+    subtitle = "Standardizzazione tramite scala di Carbonaro (Coefficienti ISTAT)",
+    x = "Componenti del Nucleo Familiare",
+    y = "Spesa Equivalente Mensile (EUR)"
+  ) +
+  theme(
+    legend.position = "none", 
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16, color = "#1d2e54"),
+    plot.subtitle = element_text(hjust = 0.5, size = 11, color = "#555555", margin = margin(b = 15)),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title = element_text(face = "bold", color = "#1d2e54"),
+    axis.text = element_text(color = "black", size = 10),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+```
+
+\medskip
+
+L'applicazione della scala di Carbonaro ribalta l'analisi: a fronte di una spesa totale maggiore per i nuclei numerosi, la loro spesa equivalente risulta sensibilmente inferiore rispetto ai single. Questo evidenzia come le famiglie più ampie godano di _economie di scala_, ma subiscano anche una potenziale riduzione del benessere individuale relativo.
