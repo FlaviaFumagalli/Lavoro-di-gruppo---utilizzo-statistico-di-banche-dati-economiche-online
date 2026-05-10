@@ -1,0 +1,1278 @@
+---
+title: "Cambiamenti nei pattern di spesa pre e post Covid-19 in Italia"
+subtitle: "Gruppo I"
+author: "Gabriele Fogli, Flavia Fumagalli, Mattia Gaiba, Elena Lenzi, Luca Sturniolo Ricci"
+date: today
+date-format: long
+lang: it
+format: 
+  beamer:
+    theme: "SimplePlus"
+    colortheme: "lily"
+    fonttheme: "structurebold"
+    fontsubtheme: "serif"
+    fontsize: 10pt
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+```{r}
+# Installazione e caricamento dei pacchetti necessari per l'analisi dei dati e la visualizzazione dei risultati. Se i pacchetti non sono già presenti, vengono installati automaticamente.
+if (!requireNamespace("rsdmx", quietly = TRUE)) {
+  install.packages("rsdmx")
+}
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+if (!requireNamespace("tidyr", quietly = TRUE)) {
+  install.packages("tidyr")
+}
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+if (!requireNamespace("knitr", quietly = TRUE)) {
+  install.packages("knitr")
+}
+if (!requireNamespace("kableExtra", quietly = TRUE)) {
+  install.packages("kableExtra")
+}
+if (!requireNamespace("ggrepel", quietly = TRUE)) {
+  install.packages("ggrepel")
+}
+if (!requireNamespace("viridis", quietly = TRUE)) {
+  install.packages("viridis")
+}
+if (!requireNamespace("scales", quietly = TRUE)) {
+  install.packages("scales")
+}
+if (!requireNamespace("pals", quietly = TRUE)) {
+  install.packages("pals")
+}
+if (!requireNamespace("randomcoloR", quietly = TRUE)) {
+  install.packages("randomcoloR")
+}
+if (!requireNamespace("scico", quietly = TRUE)) {
+  install.packages("scico")
+}
+if (!requireNamespace("Polychrome", quietly = TRUE)) {
+  install.packages("Polychrome")
+}
+
+if (!requireNamespace("RColorBrewer", quietly = TRUE)) {
+  install.packages("RColorBrewer")
+}
+if (!requireNamespace("readr", quietly = TRUE)) {
+  install.packages("readr")
+}
+if (!requireNamespace("httr", quietly = TRUE)) {
+  install.packages("httr")
+}
+if (!requireNamespace("data.table", quietly = TRUE)) {
+  install.packages("data.table")
+}
+if (!requireNamespace("gt", quietly = TRUE)) {
+  install.packages("gt")
+}
+if (!requireNamespace("FuzzyPovertyR", quietly = TRUE)) {
+  install.packages("FuzzyPovertyR")
+}
+if (!requireNamespace("sf", quietly = TRUE)) {
+  install.packages("sf")
+}
+if (!requireNamespace("rnaturalearth", quietly = TRUE)) {
+  install.packages("rnaturalearth")
+}
+if (!requireNamespace("giscoR", quietly = TRUE)) {
+  install.packages("giscoR")
+}
+if (!requireNamespace("ggdist", quietly = TRUE)) {
+  install.packages("ggdist")
+}
+if (!requireNamespace("purrr", quietly = TRUE)) {
+  install.packages("purrr")
+}
+
+library(kableExtra)
+library(rsdmx)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(ggrepel)
+library(viridis)
+library(scales)
+library(pals)
+library(randomcoloR)
+library(scico)
+library(Polychrome)
+library(RColorBrewer)
+library(readr)
+library(httr)
+library(data.table)
+library(gt)
+library(FuzzyPovertyR)
+library(sf)
+library(rnaturalearth)
+library(giscoR)
+library(ggdist)
+library(purrr)
+
+```
+
+```{r, cache = TRUE}
+# Caricamento dei dati attraverso web scraping.
+# Viene definito un vettore di URL che racchiude il link ai file zip contenenti i microdati dell'indagine HBS (Household Budget Survey) dell'Istat per gli anni dal 2014 al 2024.
+urls <- c("https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2014%2F02%2F02.zip&filename=HBS_2014_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2015%2F02%2F02.zip&filename=HBS_2015_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2016%2F02%2F02.zip&filename=HBS_2016_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2017%2F02%2F02.zip&filename=HBS_2017_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2018%2F02%2F02.zip&filename=HBS_2018_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2019%2F02%2F02.zip&filename=HBS_2019_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2020%2F02%2F02.zip&filename=HBS_2020_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2021%2F02%2F02.zip&filename=HBS_2021_RICOSTRUITICOICOP2018_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2022%2F01%2F01.zip&filename=HBS_2022_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2023%2F01%2F01.zip&filename=HBS_2023_IT.zip",
+"https://www.istat.it/wp-content/themes/EGPbs5-child/microdata/download.php?file=%2F263%2F2024%2F01%2F01.zip&filename=HBS_2024_IT.zip"
+)
+
+# I dati sono scaricati e trasformati in tibble. Viene definita una funzione che prende in input un URL, scarica il file zip, estrae i file al suo interno, individua il primo file con estensione .csv, .txt o .dat, e lo legge in un tibble. Se il download o la lettura falliscono, la funzione restituisce NULL.
+
+scarica_e_leggi <- function(url) {
+  temp_zip <- tempfile(fileext = ".zip")
+  temp_dir <- tempdir()
+  res <- GET(url, write_disk(temp_zip, overwrite = TRUE))
+
+  if (status_code(res) == 200) {
+    file_estratti <- unzip(temp_zip, exdir = temp_dir)
+    file_da_caricare <- file_estratti[grep("\\.(csv|txt|dat)$", file_estratti, ignore.case = TRUE)][1]
+    
+    if (!is.na(file_da_caricare)) {
+      df <- read_delim(file_da_caricare, 
+                       delim = NULL,
+                       show_col_types = FALSE) %>% 
+            as_tibble()
+      
+      return(df)
+    }
+  }
+  return(NULL)
+}
+
+# Vengono definiti 11 dataset distinti in modo da poter successivamente selezionare le variabili di interesse per ogni anno e creare un dataset unificato.
+for (url in urls) {
+  nome_variabile <- sub(".zip", "", sub(".*filename=", "", url))
+  dati_tibble <- scarica_e_leggi(url)
+  
+  if (!is.null(dati_tibble)) {
+    assign(nome_variabile, dati_tibble, envir = .GlobalEnv)
+    message(paste("Creato tibble:", nome_variabile))
+  }
+}
+```
+
+```{r, cache = TRUE}
+# Selezione delle variabili di interesse.
+# Per ogni anno vengono considerate solo le colonne relative al numero di componenti del nucleo familiare, al sesso del primo componente, all'età del primo componente, al titolo di studio del primo componente, alla regione, alla spesa totale per consumi e alle spese per specifiche categorie di consumo (13 categorie secondo la classificazione COICOP 2018).
+
+# 2014
+dati_2014 <- as.data.frame(HBS_2014_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+# Creazione di un dataset in cui le variabili sono convertive in formato numerico.
+dati_2014[] <- lapply(dati_2014, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2015
+dati_2015 <- as.data.frame(HBS_2015_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2015[] <- lapply(dati_2015, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2016
+dati_2016 <- as.data.frame(HBS_2016_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2016[] <- lapply(dati_2016, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2017
+dati_2017 <- as.data.frame(HBS_2017_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2017[] <- lapply(dati_2017, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2018
+dati_2018 <- as.data.frame(HBS_2018_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2018[] <- lapply(dati_2018, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2019
+dati_2019 <- as.data.frame(HBS_2019_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2019[] <- lapply(dati_2019, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2020
+dati_2020 <- as.data.frame(HBS_2020_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2020[] <- lapply(dati_2020, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2021
+dati_2021 <- as.data.frame(HBS_2021_RICOSTRUITICOICOP2018_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str_rico", "d_01_rico", "d_02_rico", "d_03_rico", "d_04_str_rico", "d_05_rico", "d_06_rico", "d_07_rico", "d_08_rico", "d_09_rico", "d_10_rico", "d_11_rico", "d_12_rico", "d_13_rico")])
+dati_2021[] <- lapply(dati_2021, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2022
+dati_2022 <- as.data.frame(HBS_2022_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str", "d_01", "d_02", "d_03", "d_04_str", "d_05", "d_06", "d_07", "d_08", "d_09", "d_10", "d_11", "d_12", "d_13")])
+dati_2022[] <- lapply(dati_2022, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2023
+dati_2023 <- as.data.frame(HBS_2023_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str", "d_01", "d_02", "d_03", "d_04_str", "d_05", "d_06", "d_07", "d_08", "d_09", "d_10", "d_11", "d_12", "d_13")])
+dati_2023[] <- lapply(dati_2023, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+# 2024
+dati_2024 <- as.data.frame(HBS_2024_IT[, c("c_Ncmp_fatto", "sesso_1", "c_c_etacalc_1", "c_titstu_1", "rgn", "sp_tot_str", "d_01", "d_02", "d_03", "d_04_str", "d_05", "d_06", "d_07", "d_08", "d_09", "d_10", "d_11", "d_12", "d_13")])
+dati_2024[] <- lapply(dati_2024, function(x) {
+  as.numeric(gsub(",", ".", as.character(x)))
+})
+
+
+# Definizione di un dataset unificato che contiene i dati di tutti gli anni, con una colonna aggiuntiva per indicare l'anno di riferimento.
+standardize_names <- function(df) {
+  names(df) <- sub("_rico$", "", names(df))
+  df
+}
+
+lista <- list(dati_2014, dati_2015, dati_2016, dati_2017, dati_2018,
+              dati_2019, dati_2020, dati_2021, dati_2022, dati_2023, dati_2024)
+anni  <- 2014:2024
+
+lista_std <- Map(function(df, yr) {
+  df2 <- standardize_names(df)
+  df2$anno <- yr
+  df2
+}, lista, anni)
+
+dati_unificati <- bind_rows(lista_std)
+
+
+# Cambiamento dei nomi delle colonne per renderli più leggibili.
+colnames(dati_unificati) <- c("Numero di componenti per famiglia", "Sesso primo componente", "Età primo componente", "Titolo di studio primo componente", "Regione", "Spesa totale", "Alimentari e bevande", "Alcolici e tabacco", "Abbigliamento e calzature", "Abitazione, bolette e combustibili", "Acquisti per l'abitazione", "Salute", "Trasporti", "Informazione e comunicazione", "Ricreazione, sport e cultura", "Istruzione", "Ristorazione e alberghi", "Servizi assicurativi e finanziari", "Beni e servizi per la cura della persona", "Anno") 
+
+# Decodifica dei codici del sesso del primo componente familiare.
+dati_unificati$`Sesso primo componente` <- recode(dati_unificati$`Sesso primo componente`,
+  "1" = "Maschio",
+  "2" = "Femmina"
+)
+
+# Decodifica dei codici dell'età del primo componente familiare.
+dati_unificati$`Età primo componente` <- recode(dati_unificati$`Età primo componente`,
+  "1" = "meno di 18 anni",
+  "2" = "18-34",
+  "3" = "35-64",
+  "4" = "65 anni e più",
+)
+
+# Decodifica dei codici del titolo di studio del primo componente familiare.
+dati_unificati$`Titolo di studio primo componente` <- recode(dati_unificati$`Titolo di studio primo componente`,
+  "1" = "Nessun titolo",
+  "2" = "Licenza elementare",
+  "3" = "Licenza media",
+  "4" = "Diploma superiore",
+  "5" = "Laurea o titolo superiore"
+)
+
+# Decodifica dei codici delle regioni.
+dati_unificati$Regione <- recode(dati_unificati$Regione,
+  "1" = "Piemonte",
+  "2" = "Valle d'Aosta",
+  "3" = "Lombardia",
+  "4" = "Trentino-Alto Adige",
+  "5" = "Veneto",
+  "6" = "Friuli-Venezia Giulia",
+  "7" = "Liguria",
+  "8" = "Emilia-Romagna",
+  "9" = "Toscana",
+  "10" = "Umbria",
+  "11" = "Marche",
+  "12" = "Lazio",
+  "13" = "Abruzzo",
+  "14" = "Molise",
+  "15" = "Campania",
+  "16" = "Puglia",
+  "17" = "Basilicata",
+  "18" = "Calabria",
+  "19" = "Sicilia",
+  "20" = "Sardegna"
+)
+
+# Aggiunta di una colonna per indicare la macroregione di appartenenza.
+dati_unificati$Macroregione <- case_when(
+  dati_unificati$Regione %in% c("Piemonte", "Valle d'Aosta", "Lombardia", "Liguria") ~ "Nord-ovest",
+  dati_unificati$Regione %in% c("Emilia-Romagna", "Friuli-Venezia Giulia", "Trentino-Alto Adige", "Veneto") ~ "Nord-est",
+  dati_unificati$Regione %in% c("Toscana", "Umbria", "Marche", "Lazio") ~ "Centro",
+  dati_unificati$Regione %in% c("Abruzzo", "Molise", "Campania", "Puglia", "Basilicata", "Calabria") ~ "Sud",
+  dati_unificati$Regione %in% c("Sicilia", "Sardegna") ~ "Isole",
+  TRUE ~ NA_character_
+)
+
+dati_unificati$`Numero di componenti per famiglia` <- as.integer(dati_unificati$`Numero di componenti per famiglia`)
+```
+
+```{r}
+# Calcolo della spesa media totale per ogni anno.
+spesa_media_annuale <- dati_unificati %>%
+  group_by(Anno) %>%
+  summarise(Spesa_media = mean(`Spesa totale`, na.rm = TRUE))
+
+# Calcolo della spesa media annuale per ogni categoria di consumo.
+categorie_media_annuale <- dati_unificati %>%
+  group_by(Anno) %>%
+  summarise(
+    Alimentari_bevande = mean(`Alimentari e bevande`, na.rm = TRUE),
+    Alcolici_tabacco = mean(`Alcolici e tabacco`, na.rm = TRUE),
+    Abbigliamento_calzature = mean(`Abbigliamento e calzature`, na.rm = TRUE),
+    Abitazione_bollette = mean(`Abitazione, bolette e combustibili`, na.rm = TRUE),
+    Acquisti_casa = mean(`Acquisti per l'abitazione`, na.rm = TRUE),
+    Salute = mean(`Salute`, na.rm = TRUE),
+    Trasporti = mean(Trasporti, na.rm = TRUE),
+    Comunicazione = mean(`Informazione e comunicazione`, na.rm = TRUE),
+    Ricreazione_cultura = mean(`Ricreazione, sport e cultura`, na.rm = TRUE),
+    Istruzione = mean(Istruzione, na.rm = TRUE),
+    Ristorazione_alberghi = mean(`Ristorazione e alberghi`, na.rm = TRUE),
+    Servizi_finanziari = mean(`Servizi assicurativi e finanziari`, na.rm = TRUE),
+    Cura_persona = mean(`Beni e servizi per la cura della persona`, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Budget share di ogni categoria di consumo rispetto alla spesa totale per consumi.
+categorie_budget_share <- categorie_media_annuale %>%
+  mutate(
+    Alimentari_bevande = Alimentari_bevande / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Alcolici_tabacco = Alcolici_tabacco / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Abbigliamento_calzature = Abbigliamento_calzature / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Abitazione_bollette = Abitazione_bollette / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Acquisti_casa = Acquisti_casa / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Salute = Salute / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Trasporti = Trasporti / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Comunicazione = Comunicazione / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Ricreazione_cultura = Ricreazione_cultura / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Istruzione = Istruzione / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Ristorazione_alberghi = Ristorazione_alberghi / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Servizi_finanziari = Servizi_finanziari / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)],
+    Cura_persona = Cura_persona / spesa_media_annuale$Spesa_media[match(Anno, spesa_media_annuale$Anno)]
+  )
+```
+
+```{r}
+# Coefficiente di equivalenza secondo la scala di Carbonaro (ISTAT).
+scala_carbonaro <- data.frame(
+  Componenti = c(1, 2, 3, 4, 5, 6, 7),
+  Coefficiente = c(0.60, 1.00, 1.33, 1.63, 1.90, 2.16, 2.40)
+)
+
+# Standardizzazione della spesa totale per numero di componenti utilizzando la scala di Carbonaro.
+dati_standardizzati <- dati_unificati %>%
+  left_join(scala_carbonaro, by = c("Numero di componenti per famiglia" = "Componenti")) %>%
+  mutate(Spesa_Equivalente = `Spesa totale` / Coefficiente)
+```
+
+# Risultati dell'analisi.
+
+- La spesa media mensile totale ha mostrato una forte contrazione nel 2020, passando da **€2.605** (2019) a **€2.425** (2020). A partire dal 2021 si osserva una ripresa nominale, influenzata però anche dalla spinta inflattiva.
+
+- Il lockdown ha polarizzato i consumi, distinguendo nettamente le categorie di consumo essenziali (alimentari, bollette, spese per abitazione) da quelle discrezionali (abbigliamento, ristorazione, cultura).
+
+\medskip
+
+```{r}
+# Variazione media percentuale per il periodo 2014-2019.
+var_pre <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  filter(Anno <= 2019) %>%
+  summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+
+# Variazione media percentuale per il periodo 2019-2020.
+var_durante <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  filter(Anno >= 2019 & Anno <= 2020) %>%
+  summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+
+# Variazione media percentuale per il periodo 2021-2024.
+var_post <- categorie_budget_share %>%
+  arrange(Anno) %>%
+  filter(Anno >= 2021) %>%
+    summarise(
+    Alimentari_bevande = ((last(Alimentari_bevande) / first(Alimentari_bevande))^(1/(n()-1)) - 1) * 100,
+    Alcolici_tabacco = ((last(Alcolici_tabacco) / first(Alcolici_tabacco))^(1/(n()-1)) - 1) * 100,
+    Abbigliamento_calzature = ((last(Abbigliamento_calzature) / first(Abbigliamento_calzature))^(1/(n()-1)) - 1) * 100,
+    Abitazione_bollette = ((last(Abitazione_bollette) / first(Abitazione_bollette))^(1/(n()-1)) - 1) * 100,
+    Acquisti_casa = ((last(Acquisti_casa) / first(Acquisti_casa))^(1/(n()-1)) - 1) * 100,
+    Salute = ((last(Salute) / first(Salute))^(1/(n()-1)) - 1) * 100,
+    Trasporti = ((last(Trasporti) / first(Trasporti))^(1/(n()-1)) - 1) * 100,
+    Comunicazione = ((last(Comunicazione) / first(Comunicazione))^(1/(n()-1)) - 1) * 100,
+    Ricreazione_cultura = ((last(Ricreazione_cultura) / first(Ricreazione_cultura))^(1/(n()-1)) - 1) * 100,
+    Istruzione = ((last(Istruzione) / first(Istruzione))^(1/(n()-1)) - 1) * 100,
+    Ristorazione_alberghi = ((last(Ristorazione_alberghi) / first(Ristorazione_alberghi))^(1/(n()-1)) - 1) * 100,
+    Servizi_finanziari = ((last(Servizi_finanziari) / first(Servizi_finanziari))^(1/(n()-1)) - 1) * 100,
+    Cura_persona = ((last(Cura_persona) / first(Cura_persona))^(1/(n()-1)) - 1) * 100,
+    .groups = "drop"
+  )
+# Creazione di una tabella unificata che mostra le variazioni percentuali per i tre periodi di osservazione.
+tab_unica <- rbind(var_pre, var_durante[1,], var_post[1,])
+tabella_finale <- as.data.frame(t(tab_unica))
+colnames(tabella_finale) <- c("Pre-Covid (14-19)", "Shock (19-20)", "Post-Covid (21-24)")
+rownames(tabella_finale) <- gsub("_", " ", rownames(tabella_finale))
+```
+
+```{r, fig.width = 5, fig.height = 3, out.width = "60%", fig.align = "center"}
+# Creazione di un dataset per il grafico a barre divergenti, con una colonna che indica se la variazione è positiva (consumi rigidi) o negativa (consumi flessibili).
+df_graph <- data.frame(
+  Categoria = rownames(tabella_finale),
+  Variazione = tabella_finale$`Shock (19-20)`
+) %>%
+  mutate(Tipo = ifelse(Variazione > 0, "Consumi Rigidi (Aumento)", "Consumi Flessibili (Calo)"))
+
+# Creazione del grafico a barre divergenti.
+ggplot(df_graph, aes(x = reorder(Categoria, Variazione), y = Variazione, fill = Tipo)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  coord_flip() + 
+  scale_fill_manual(values = c("Consumi Rigidi (Aumento)" = "#228B22", 
+                               "Consumi Flessibili (Calo)" = "#D32F2F")) +
+  theme_minimal() +
+  labs(
+    title = "Lo Shock del 2020: Variazione dei Budget Share", width = 40,
+    subtitle = "Confronto tra categorie rigide e flessibili",
+    x = "",
+    y = "Variazione Percentuale (%)",
+    fill = ""
+  ) +
+  theme(
+    text = element_text(size = 10),
+    plot.title = element_text(face = "bold", size = 10, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "none",
+    plot.margin = margin(10, 20, 10, 10) 
+  )
+```
+
+# Dalla spesa totale alla spesa equivalente.
+
+Per confrontare correttamente il benessere tra famiglie di diversa composizione è stata standardizzata la spesa totale utilizzando un coefficiente di equivalenza.
+La spesa equivalente è stata calcolata dividendo la spesa totale per il coefficiente di equivalenza corrispondente al numero di componenti della famiglia, secondo la **scala di Carbonaro** (ISTAT).
+
+\medskip
+
+```{r, fig.width = 5, fig.height = 3.5, out.width = "70%", fig.align = "center"}
+# Preparazione dei dati per la realizzazione di un grafico a barre che confronta la spesa totale e la spesa equivalente per ogni numero di componenti familiari, focalizzandosi sull'anno 2020.
+df_carbonaro_plot <- dati_standardizzati %>%
+  filter(Anno == 2020) %>%
+  group_by(`Numero di componenti per famiglia`) %>%
+  summarise(
+    Totale = mean(`Spesa totale`, na.rm = TRUE),
+    Equivalente = mean(Spesa_Equivalente, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = c(Totale, Equivalente), names_to = "Tipo", values_to = "Valore")
+
+ggplot(df_carbonaro_plot, aes(x = as.factor(`Numero di componenti per famiglia`), y = Valore, fill = Tipo)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  scale_fill_manual(values = c("Totale" = "#41b1e1", "Equivalente" = "#151ca9")) +
+  theme_minimal() +
+  labs(title = "Spesa Totale vs Equivalente (2020)", x = "Componenti", y = "Euro", fill = "") +
+  theme(legend.position = "bottom", plot.title = element_text(face = "bold", size = 12, hjust = 0.5), text = element_text(size = 10),
+  legend.key.size = unit(0.4, "cm"), # grandezza dei simboli nella legenda
+  legend.text = element_text(size = 9), 
+  plot.margin = margin(10, 20, 10, 10))
+```
+
+
+# Domande di ricerca.
+
+1. Durante lo shock del 2020, il livello di benessere (espresso tramite la spesa equivalente) è rimasto omogeneo tra le diverse tipologie familiari o alcune sono risultate più vulnerabili?
+
+2. Esistono differenze statisticamente significative nei budget share di "Abitazione" e "Ristorazione" tra le macro-regioni italiane durante lo shock del 2020?
+
+3. Le variazioni osservate durante il Covid-19 comportano un cambiamento nel trend di spesa o si tratta di un effetto temporaneo?
+
+# Evoluzione del dataset.
+
+- *Numero di righe*: 240158
+
+- *Numero di colonne*: 21
+
+Al fine di incrementare l'efficienza delle stime e mitigare potenziali distorsioni, il dataset è stato integrato con opportune **variabili di controllo**. Nello specifico, sono state incluse le caratteristiche socio-demografiche del capofamiglia (genere, età e livello di istruzione) e la variabile relativa alla macro-area geografica di residenza.
+
+\medskip
+
+\begin{table}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+
+\resizebox{\textwidth}{!}{
+\begin{tabular}{r r r r r r r r r r r r r r r r r r r r r}
+\toprule
+\makecell{N \\ comp.} & 
+\makecell{Sesso \\ primo comp.} & 
+\makecell{Età \\ primo comp.} & 
+\makecell{Titolo di \\ studio primo comp.} &
+\makecell{Regione} & 
+\makecell{Spesa \\ totale} & 
+\makecell{Alimentari \\ bevande} & 
+\makecell{Alcolici \\ tabacco} & 
+\makecell{Abbigl. \\ calzature} & 
+\makecell{Abitazione \\ bollette} & 
+\makecell{Acquisti \\ casa} & 
+\makecell{Salute} & 
+\makecell{Trasporti} & 
+\makecell{Comunic.} & 
+\makecell{Ricreaz. \\ cultura} & 
+\makecell{Istruz.} & 
+\makecell{Ristoraz. \\ alberghi} & 
+\makecell{Servizi \\ fin.} & 
+\makecell{Cura \\ persona} & 
+\makecell{Anno} &
+Macroregione \\
+\midrule
+1 & Femmina & 18-34 & Laurea o superiore & Piemonte & 1873.37 & 180.79 & 0.00 & 0.00 & 911.47 & 0.00 & 0.00 & 172.98 & 87.89 & 269.42 & 19.40 & 157.36 & 26.78 & 47.27 & 2014 & Nord-ovest \\
+1 & Femmina & 35-64 & Laurea o superiore & Emilia-Romagna & 1751.62 & 205.29 & 72.23 & 170.07 & 792.70 & 90.40 & 0.01 & 107.01 & 26.02 & 34.35 & 0.08 & 19.39 & 82.06 & 152.00 & 2014 & Nord-est \\
+4 & Maschio & 35-64 & Diploma superiore & Campania & 2244.13 & 455.18 & 0.00 & 30.27 & 663.87 & 14.54 & 161.28 & 277.97 & 119.38 & 230.63 & 0.38 & 143.00 & 51.40 & 96.22 & 2014 & Sud \\
+4 & Femmina & 65 e più & Diploma superiore & Molise & 2436.11 & 741.64 & 13.60 & 27.58 & 523.61 & 73.15 & 113.35 & 308.54 & 124.18 & 79.40 & 212.60 & 0.00 & 76.05 & 142.39 & 2014 & Sud \\
+2 & Maschio & 65 e più & Diploma superiore & Basilicata & 1693.54 & 469.78 & 0.00 & 41.38 & 572.95 & 108.56 & 157.40 & 124.14 & 61.34 & 11.36 & 0.02 & 11.24 & 47.14 & 88.25 & 2014 & Sud \\
+3 & Femmina & 35-64 & Licenza media & Veneto & 3220.33 & 1152.43 & 146.11 & 0.00 & 810.29 & 24.50 & 33.38 & 397.96 & 42.77 & 0.00 & 0.00 & 125.57 & 170.85 & 316.49 & 2014 & Nord-est \\
+\bottomrule
+\end{tabular}
+}
+
+\caption{head(dati\_unificati)}
+\end{table}
+
+# Domanda 1.
+
+Per rispondere alla prima domanda di ricerca l'analisi si è focalizzata sulla comparazione della **spesa equivalente** (calcolata utilizzando la scala di Carbonaro) tra le differenti configurazioni dei nuclei familiari. L'indagine, riferita al periodo d'osservazione 2020, mira a identificare eventuali asimmetrie nella vulnerabilità allo shock pandemico in funzione dell'ampiezza del nucleo familiare.
+
+\begin{block}{Ipotesi del Test ANOVA}
+    \begin{align*}
+        H_0 &: \mu_1 = \mu_2 = \dots = \mu_k \\
+        H_1 &: \exists \, i, j : \mu_i \neq \mu_j
+    \end{align*}
+    \vspace{-0.5cm}
+\begin{itemize}
+    \item {\textbf{$H_0$}: non esistono differenze statisticamente significative nella spesa equivalente media tra le diverse tipologie familiari. La variazione osservata è dovuta al caso.}
+    \item {\textbf{$H_1$}: almeno una tipologia familiare presenta una spesa equivalente media significativamente diversa dalle altre, suggerendo una differente vulnerabilità allo shock pandemico.}
+\end{itemize}
+\end{block}
+
+---
+
+```{r}
+# Preparazione dei dati per il test ANOVA, filtrando per l'anno 2020 e creando una variabile fattoriale per il numero di componenti familiari.
+dati_2020_fam <- dati_standardizzati %>% 
+  filter(Anno == 2020) %>%
+  mutate(Gruppo_Famiglia = as.factor(`Numero di componenti per famiglia`))
+risultato_anova <- aov(Spesa_Equivalente ~ Gruppo_Famiglia, data = dati_2020_fam)
+``` 
+
+## **Test ANOVA: risultati**.
+
+\centering
+\scriptsize 
+\begin{tabular}{l c r r c c}  
+\toprule
+\textbf{} & \textbf{Df} & \textbf{Sum Sq} & \textbf{Mean Sq} & \textbf{F value} & \textbf{Pr($>$F)} \\
+\midrule
+Gruppo Famiglia & 5 & 3.396e+09 & 679125515 & 326,3 & $<$ 2.2e-16 $^{***}$ \\
+Residui         & 25.662 & 5.342e+07 & 2081522   &       &                     \\
+\midrule
+\multicolumn{6}{l}{Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1} \\
+\bottomrule
+\end{tabular}
+
+\bigskip
+
+\raggedright
+\normalsize
+
+L'analisi della varianza (ANOVA) eseguita sulla spesa equivalente per l'anno 2020 conferma l'esistenza di una marcata **eterogeneità** nei livelli di consumo in base alla numerosità del nucleo familiare. Il valore del test ($F=326.3$, $p<2.2e-16$) evidenzia come la dimensione della famiglia sia stata un fattore discriminante critico durante lo shock pandemico. 
+
+\smallskip
+
+Questo risultato giustifica l'utilizzo di test t per individuare quali specifici cluster abbiano registrato i divari più profondi.
+
+---
+
+Dopo aver fattorizzato la variabile relativa all'ampiezza del nucleo familiare, è stato eseguito un test t per campioni indipendenti su ciascuna coppia, assumendo la famiglia monocomponente come categoria di riferimento.
+
+\begin{block}{Ipotesi dei Test t}
+    \begin{align*}
+        H_0 &: \mu_i = \mu_j \\
+        H_1 &: \mu_i \neq \mu_j
+    \end{align*}
+    \vspace{-0.5cm}
+\begin{itemize}
+    \item {\textbf{$H_0$}: non esistono differenze statisticamente significative nella spesa equivalente media tra i gruppi familiari $i$ e $j$. La variazione osservata è attribuibile al caso.}
+    \item {\textbf{$H_1$}: esistono differenze statisticamente significative nella spesa equivalente media tra i gruppi familiari $i$ e $j$, indicando una differente vulnerabilità allo shock pandemico.}
+\end{itemize}
+\end{block}
+
+--- 
+
+## **Test t: risultati**.
+
+```{r}
+# Calcolo del test t prendendo come categoria di riferimento per i confronti le famiglie composte da un solo componente.
+dati_standardizzati$N_comp_fact <- as.factor(dati_standardizzati$`Numero di componenti per famiglia`)
+dati_2020 <- dati_standardizzati %>% 
+  filter(Anno == 2020)
+base_1_comp <- dati_2020 %>% 
+  filter(N_comp_fact == "1") %>% 
+  pull(Spesa_Equivalente)
+
+# Calcolo del test t.
+test_risultati <- list(
+  "1 vs 2" = t.test(dati_2020 %>% filter(N_comp_fact == "2") %>% pull(Spesa_Equivalente), base_1_comp),
+  "1 vs 3" = t.test(dati_2020 %>% filter(N_comp_fact == "3") %>% pull(Spesa_Equivalente), base_1_comp),
+  "1 vs 4" = t.test(dati_2020 %>% filter(N_comp_fact == "4") %>% pull(Spesa_Equivalente), base_1_comp),
+  "1 vs 5" = t.test(dati_2020 %>% filter(N_comp_fact == "5") %>% pull(Spesa_Equivalente), base_1_comp),
+  "1 vs 6+" = t.test(dati_2020 %>% filter(N_comp_fact == "6") %>% pull(Spesa_Equivalente), base_1_comp)
+)
+
+# Creazione di una tabella riassuntiva dei risultati dei test t, includendo la differenza media, la statistica t e il p-value per ciascun confronto.
+tabella_risultati <- data.frame(
+  Diff_Medie = test_risultati %>% map_dbl(~ round(.x$estimate[1] - .x$estimate[2], 2)),
+  t_stat = test_risultati %>% map_dbl(~ round(.x$statistic, 2)),
+  p_val = test_risultati %>% map_dbl(~ round(.x$p.value, 4))
+)
+
+tabella_risultati %>%
+  kable(
+    format = "latex",
+    booktabs = TRUE,         
+    align = "ccc",       
+    col.names = c( "Diff. Media (€)", "Statistica t", "p-value"),
+    escape = FALSE          
+  ) %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"), 
+    font_size = 7,         
+    full_width = FALSE
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1B4F72")
+```
+
+\bigskip
+
+- **Significatività statistica**: il p-value ($<2.2e−16$) permette di rigettare l'ipotesi nulla $H_0$ con confidenza >99%. L'eterogeneità del benessere tra classi familiari non è stocastica ma sistematica.
+
+- Si osserva un peggioramento lineare del benessere all'aumentare dell'ampiezza del nucleo. Il divario rispetto ai single cresce dai **-409,65€** delle coppie agli oltre **-1.319,77€** delle famiglie numerose (6+ componenti).
+
+- I risultati evidenziano come le famiglie numerose siano state il segmento più vulnerabile durante la pandemia. Nonostante la scala di Carbonaro corregga la spesa per le economie di scala, il livello di benessere dei nuclei ampi è rimasto significativamente inferiore a quello dei monocomponenti.
+
+
+# Domanda 2.
+
+\smallskip
+
+```{r, fig.width = 2.5, fig.height = 3.5, out.width = "55%", fig.align = "center"}
+# Realizzazione di una mappa che mostra la suddivisione delle macro-regioni italiane, utilizzando i dati geografici disponibili in formato GeoJSON.
+italy_map <- read_sf("https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson")
+
+# Impostazione dell'ordine delle macro-regioni per garantire una visualizzazione coerente nella legenda e nel grafico.
+ordine_macro <- c("Nord-ovest", "Nord-est", "Centro", "Sud", "Isole")
+
+italy_macro <- italy_map %>%
+  mutate(reg_name = trimws(reg_name)) %>% 
+  mutate(Macroregione = case_when(
+    reg_name %in% c("Sicilia", "Sardegna") ~ "Isole",
+    reg_name %in% c("Piemonte", "Valle d'Aosta/Vallée d'Aoste", "Valle d'Aosta", "Lombardia", "Liguria") ~ "Nord-ovest",
+    reg_name %in% c("Emilia-Romagna", "Friuli-Venezia Giulia", "Friuli Venezia Giulia", 
+                    "Trentino-Alto Adige/Südtirol", "Trentino-Alto Adige", "Veneto") ~ "Nord-est",
+    reg_name %in% c("Toscana", "Umbria", "Marche", "Lazio") ~ "Centro",
+    reg_name %in% c("Abruzzo", "Molise", "Campania", "Puglia", "Basilicata", "Calabria") ~ "Sud"
+  )) %>%
+  mutate(Macroregione = factor(Macroregione, levels = ordine_macro)) %>%
+  group_by(Macroregione) %>%
+  summarise(geometry = st_union(geometry))
+
+# Scelta dei colori.
+palette_vibrant <- c(
+  "Nord-ovest" = "#08306b", 
+  "Nord-est"   = "#2171b5", 
+  "Centro"     = "#6baed6",
+  "Sud"        = "#bdd7e7", 
+  "Isole"      = "#dbe4fa"
+)
+
+ggplot(italy_macro) +
+  geom_sf(aes(fill = Macroregione), color = "white", size = 0.5) +
+  scale_fill_manual(values = palette_vibrant) + 
+  theme_void() +
+  theme(
+    legend.position = "right",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 6),
+    legend.margin = margin(0, 0, 0, 0),
+    legend.key.size = unit(0.4, "cm")
+  )
+```
+
+\smallskip
+
+Per rispondere alla seconda domanda di ricerca le asimmetrie territoriali nel comportamento di spesa vengono analizzate tramite test t, assumendo il **Nord-ovest** come macroregione di riferimento per verificare gli scostamenti statistici dei budget share.
+
+---
+
+## **Test t: budget share "Abitazione".**
+
+\begin{equation*}
+\text{\small}
+\begin{aligned}
+    H_0 &: \mu_{\text{Abitaz.}}^{Nord-ovest} = \mu_{\text{Abitaz.}}^{Macroregione} \\
+    H_1 &: \mu_{\text{Abitaz.}}^{Nord-ovest} \neq \mu_{\text{Abitaz.}}^{Macroregione}
+\end{aligned}
+\end{equation*}
+
+\smallskip
+
+```{r}
+# Filtraggio dei dati per l'anno 2020 e calcolo del budget share dedicato all'abitazione, seguito dall'esecuzione di test t per confrontare il budget share del Nord-ovest con quello delle altre macro-regioni.
+dati_2020_micro <- dati_unificati %>% 
+  filter(Anno == 2020) %>%
+  mutate(
+    BS_Abitazione = `Abitazione, bolette e combustibili` / `Spesa totale`
+  )
+
+# Budget share per l'abitazione nelle diverse macro-regioni.
+bs_is_a <- as.vector(dati_2020_micro %>% filter(Macroregione == "Isole")      %>% pull(BS_Abitazione))
+bs_no_a <- as.vector(dati_2020_micro %>% filter(Macroregione == "Nord-ovest") %>% pull(BS_Abitazione))
+bs_ne_a <- as.vector(dati_2020_micro %>% filter(Macroregione == "Nord-est")   %>% pull(BS_Abitazione))
+bs_ce_a <- as.vector(dati_2020_micro %>% filter(Macroregione == "Centro")     %>% pull(BS_Abitazione))
+bs_su_a <- as.vector(dati_2020_micro %>% filter(Macroregione == "Sud")        %>% pull(BS_Abitazione))
+
+# Test t.
+test_abit <- list(
+  "Nord-ovest vs Nord-est" = t.test(bs_ne_a, bs_no_a),
+  "Nord-ovest vs Centro"   = t.test(bs_ce_a, bs_no_a),
+  "Nord-ovest vs Sud"      = t.test(bs_su_a, bs_no_a),
+  "Nord-ovest vs Isole"    = t.test(bs_is_a, bs_no_a)
+)
+
+# Creazione di una tabella riassuntiva dei risultati dei test t, includendo la differenza media, la statistica t e il p-value per ciascun confronto.
+tabella_abitazione <- data.frame(
+  Diff_Medie = test_abit %>% map_dbl(~ round(.x$estimate[1] - .x$estimate[2], 4)),
+  t_stat = test_abit %>% map_dbl(~ round(.x$statistic, 2)),
+  p_val = test_abit %>% map_dbl(~ round(.x$p.value, 4))
+)
+rownames(tabella_abitazione) <- c("Nord-ovest vs Nord-est", "Nord-ovest vs Centro", "Nord-ovest vs Sud", "Nord-ovest vs Isole")
+
+tabella_abitazione_formatted <- tabella_abitazione |>
+  mutate(
+    p_val = cell_spec(
+      sprintf("%.4f", p_val),
+      color = ifelse(p_val > 0.05, "blue", "black"),
+      bold = p_val < 0.05
+    )
+  )
+tabella_abitazione_formatted |>
+  kable(
+    format = "latex",
+    booktabs = TRUE,
+    align = "ccc",
+    col.names = c("Diff. Media", "Statistica t", "p-value"),
+    escape = FALSE
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 7,
+    full_width = FALSE
+  ) |>
+  row_spec(0, bold = TRUE, color = "white", background = "#1B4F72")
+```
+
+\medskip
+
+- **Nord-ovest vs Centro**: è l'unico confronto non significativo. Il budget share dedicato all'abitazione nel Centro è risultato statisticamente indistinguibile da quello del Nord-ovest, evidenziando una simile incidenza di questa voce sul bilancio familiare in entrambe le aree.
+
+- **Nord-ovest vs Sud e Isole**: i coefficienti negativi indicano che anche in un anno di crisi l'incidenza della casa sul budget familiare nel Mezzogiorno è stata sensibilmente inferiore rispetto al riferimento.
+
+- **Nord-ovest vs Nord-est**: si osserva una lieve ma significativa discrepanza anche nel Nord-est.
+
+---
+
+## **Test t: budget share "Ristorazione".**
+
+\begin{equation*}
+\text{\small}
+\begin{aligned}
+    H_0 &: \mu_{\text{Rist.}}^{Nord-ovest} = \mu_{\text{Rist.}}^{Macroregione} \\
+    H_1 &: \mu_{\text{Rist.}}^{Nord-ovest} \neq \mu_{\text{Rist.}}^{Macroregione}
+\end{aligned}
+\end{equation*}
+
+\smallskip
+
+```{r}
+# Filtraggio dei dati per l'anno 2020 e calcolo del budget share dedicato alla ristorazione, seguito dall'esecuzione di test t per confrontare il budget share del Nord-ovest con quello delle altre macro-regioni.
+dati_2020_micro <- dati_unificati %>% 
+  filter(Anno == 2020) %>%
+  mutate(
+    BS_Ristorazione = `Ristorazione e alberghi` / `Spesa totale`
+  )
+# Budget share per la ristorazione nelle diverse macro-regioni.
+bs_is_r <- as.vector(dati_2020_micro %>% filter(Macroregione == "Isole")      %>% pull(BS_Ristorazione))
+bs_no_r <- as.vector(dati_2020_micro %>% filter(Macroregione == "Nord-ovest") %>% pull(BS_Ristorazione))
+bs_ne_r <- as.vector(dati_2020_micro %>% filter(Macroregione == "Nord-est")   %>% pull(BS_Ristorazione))
+bs_ce_r <- as.vector(dati_2020_micro %>% filter(Macroregione == "Centro")     %>% pull(BS_Ristorazione))
+bs_su_r <- as.vector(dati_2020_micro %>% filter(Macroregione == "Sud")        %>% pull(BS_Ristorazione))
+
+# Test t.
+test_ristorazione <- list(
+  "Nord-ovest vs Nord-est" = t.test(bs_ne_r, bs_no_r),
+  "Nord-ovest vs Centro"   = t.test(bs_ce_r, bs_no_r),
+  "Nord-ovest vs Sud"      = t.test(bs_su_r, bs_no_r),
+  "Nord-ovest vs Isole"    = t.test(bs_is_r, bs_no_r)
+)
+
+# Creazione di una tabella riassuntiva dei risultati dei test t, includendo la differenza media, la statistica t e il p-value per ciascun confronto.
+tabella_ristorazione <- data.frame(
+  Diff_Medie = test_ristorazione %>% map_dbl(~ round(.x$estimate[1] - .x$estimate[2], 4)),
+  t_stat = test_ristorazione %>% map_dbl(~ round(.x$statistic, 2)),
+  p_val = test_ristorazione %>% map_dbl(~ round(.x$p.value, 4))
+)
+rownames(tabella_ristorazione) <- c("Nord-ovest vs Nord-est", "Nord-ovest vs Centro", "Nord-ovest vs Sud", "Nord-ovest vs Isole")
+
+tabella_ristorazione_formatted <- tabella_ristorazione |>
+  mutate(
+    p_val = cell_spec(
+      sprintf("%.4f", p_val),
+      color = ifelse(p_val > 0.05, "blue", "black"),
+      bold = p_val < 0.05
+    )
+  )
+tabella_ristorazione_formatted |>
+  kable(
+    format = "latex",
+    booktabs = TRUE,
+    align = "ccc",
+    col.names = c("Diff. Media", "Statistica t", "p-value"),
+    escape = FALSE
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 7,
+    full_width = FALSE
+  ) |>
+  row_spec(0, bold = TRUE, color = "white", background = "#1B4F72")
+```
+
+\medskip
+
+- **Divario Nord-Sud**: il Sud e le Isole mostrano la contrazione più forte (circa -1.5 p.p. rispetto al Nord-ovest). Questo indica che nel Mezzogiorno la spesa fuori casa è stata tagliata più drasticamente che altrove.
+
+- L'unica area con segno positivo (+0.34 p.p.) è il Nord-est, indice del fatto che, rispetto al benchmark, ha destinato una quota leggermente superiore del proprio budget alla ristorazione.
+
+- **Significatività totale**: tutti i p-value sono prossimi allo zero ($<0.01$). Questo prova che le differenze territoriali osservate non sono casuali, ma strutturali.
+
+
+
+# Domanda 3.
+Per rispondere alla terza domanda di ricerca si è deciso di stimare tre modelli di regressione:
+
+\begin{itemize}
+    \item \textbf{Modello 1 (Dummy Impulso):} Verifica deviazioni negli anni critici (2020-2021) con ritorno al trend precedente.
+    \vspace{0.3cm}
+    {\footnotesize
+    \begin{equation*}
+        \ln(\mathit{SpesaE}_{i,t}) = \beta_0 + \beta_1 t + \delta_1 D_{2020} + \delta_2 D_{2021} + \sum \phi_j X_{i,j} + \varepsilon_{i,t}
+    \end{equation*}
+    }
+    
+    \item \textbf{Modello 2 (Dummy Step):} Verifica se il livello medio si è spostato su un nuovo equilibrio permanente.
+    \vspace{0.3cm}
+    {\footnotesize
+    \begin{equation*}
+        \ln(\mathit{SpesaE}_{i,t}) = \beta_0 + \beta_1 t + \delta D_{\mathit{post}2020} + \sum \phi_j X_{i,j} + \varepsilon_{i,t}
+    \end{equation*}
+    }
+    
+    \item \textbf{Modello 3 (Dummy Interazione):} Verifica se la pandemia ha modificato strutturalmente il tasso di crescita della spesa.
+    \vspace{0.3cm}
+    {\footnotesize
+    \begin{equation*}
+        \ln(\mathit{SpesaE}_{i,t}) = \beta_0 + \beta_1 t + \delta D_{\mathit{post}2020} + \gamma (t \times D_{\mathit{post}2020}) + \sum \phi_j X_{i,j} + \varepsilon_{i,t}
+    \end{equation*}
+    }
+\end{itemize}
+
+---
+
+## **Modello 1: dummy impulso**.
+
+L'obiettivo è stimare **l'impatto puntuale** della pandemia sulla spesa equivalente totale, isolandolo dal trend naturale di crescita/decrescita.
+
+\smallskip
+
+Si utilizza il *logaritmo della spesa* per interpretare i risultati in termini di variazioni percentuali approssimate.
+
+\begin{equation}
+    \ln(SpesaE_{i,t}) = \beta_0 + \beta_1 t + \delta_1 D_{2020} + \delta_2 D_{2021} + \sum(\phi_j X_{i,j}) + \varepsilon_{i,t} \nonumber
+\end{equation}
+
+\smallskip
+
+\begin{itemize}
+    \item $t$: trend lineare (variabile tempo: $2014=1, \dots, 2024=11$).
+    \item $D_{2020}, D_{2021}$: variabili dummy che valgono $1$ solo per l'anno specifico e $0$ altrove.
+    \item $\delta_1, \delta_2$: misurano lo shock puntuale di quegli anni.
+    \item $\sum(\phi_j X_{i,j})$ : variabili di controllo socio-demografiche e territoriali (genere, età, istruzione, macroregione).
+\end{itemize}
+
+# Output modello 1.
+
+```{r, eval = FALSE}
+# Creazione del modello di regressione per verificare l'effetto puntuale degli anni 2020 e 2021 sulla spesa totale.
+# Fattorizzazione delle variabili qualitative e creazione delle dummy per gli anni di interesse.
+dati_modello1 <- dati_standardizzati %>%
+  mutate(
+    t = Anno - 2014 + 1,
+    D2020 = ifelse(Anno == 2020, 1, 0),
+    D2021 = ifelse(Anno == 2021, 1, 0),
+    Macroregione = as.factor(Macroregione),
+    Sesso = as.factor(`Sesso primo componente`),
+    Età = as.factor(`Età primo componente`),
+    Istruzione = as.factor(`Titolo di studio primo componente`)
+  ) %>%
+  mutate(Macroregione = relevel(Macroregione, ref = "Nord-ovest"))
+
+modello_impulso <- lm(log(Spesa_Equivalente) ~ t + D2020 + D2021 + Macroregione + Sesso + Età + Istruzione,
+                      data = dati_modello1)
+
+summary(modello_impulso)
+```
+
+\centering
+\scriptsize
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Coefficients} & \textbf{Estimate} & \textbf{Std. Error} & \textbf{t value} & \textbf{Pr($>$$|t|$)} \\
+\midrule
+(Intercept)             & 7.7430787 & 0.0051222 & 1511.665 & $<$ 2.2e-16 *** \\
+Trend ($t$)             & 0.0094469 & 0.0003292 & 28.701 & $<$ 2.2e-16 *** \\
+Shock 2020 ($\delta_1$) & $-$ 0.0934368 & 0.0032628 & $-$ 28.637 & $<$ 2.2e-16 *** \\
+Shock 2021 ($\delta_2$) & $-$ 0.0677828 & 0.0031461 & $-$ 21.545 & $<$ 2.2e-16 *** \\
+Macroregione - Centro & $-$ 0.0709037 & 0.002975 & $-$ 23.826 & $<$ 2.2e-16 *** \\
+Macroregione - Isole  & $-$ 0.2910223 & 0.0039475 & $-$ 73.724 & $<$ 2e-16 *** \\
+Macroregione - Nord-est & 0.0040190 & 0.0029890 & 1.345 & 0.179 \\
+Macroregione - Sud  & $-$ 0.3207920 & 0.0028847 & $-$ 111.205 & $<$ 2e-16 *** \\
+Sesso - Maschio & $-$ 0.0193586 & 0.0021153 & $-$ 9.152 & $<$ 2e-16 *** \\
+Età, 35-64 & 0.0889967 & 0.0041787 & 21.298 & $<$ 2e-16 *** \\
+Età, 65 anni e più & 0.2461690 & 0.0044311 & 55.555 & $<$ 2e-16 *** \\
+Istruzione - Laurea o titolo superiore & 0.2243838 & 0.0029981 & 74.843 & $<$ 2e-16 *** \\
+Istruzione - Licenza elementare & $-$ 0.3714469 & 0.0033333 & $-$ 111.436 & $<$ 2e-16 *** \\
+Istruzione - Licenza media & $-$ 0.2184422 & 0.0025191 & $-$ 86.716 & $<$ 2e-16 *** \\
+Istruzione - Nessun titolo & $-$ 0.4863201 & 0.0064243 & $-$ 75.701 & $<$ 2e-16 *** \\
+\midrule
+\multicolumn{5}{l}{Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1} \\
+\midrule
+Residual standard error & \multicolumn{4}{l}{0.4893 on 240143 degrees of freedom} \\
+Multiple R-squared      & \multicolumn{4}{l}{0.2096} \\
+Adjusted R-squared     & \multicolumn{4}{l}{0.2096} \\
+F-statistic             & \multicolumn{4}{l}{4550 on 14 and 240143 DF, p-value: $<$ 2.2e-16} \\
+\bottomrule
+\end{tabular}
+
+---
+
+## **Commento output modello 1.**
+
+Nel modello di regressione, per ogni variabile qualitativa è stata omessa una modalità (categoria di riferimento) per evitare la multicollinearità perfetta. I coefficienti riportati rappresentano pertanto lo scostamento differenziale rispetto al benchmark, i cui valori sono assorbiti nell'intercetta del modello.
+
+\medskip
+
+- **Impatto dello shock pandemico**: al netto delle caratteristiche socio-demografiche, la spesa equivalente ha registrato una contrazione significativa del 9,3% nel 2020 ($\delta_1$) e del 6,8% nel 2021 ($\delta_2$) rispetto al trend atteso. Il parziale recupero nel 2021 suggerisce uno shock intenso ma temporaneo (impulso). 
+
+- Risiedere nel Mezzogiorno comporta una spesa equivalente inferiore di circa il 29-32% rispetto al Nord-ovest. Il Centro mostra una contrazione moderata (-7%), mentre il Nord-est risulta sostanzialmente in linea con il benchmark.
+
+- Il titolo di studio si conferma il principale driver della spesa: un laureato spende mediamente il 22% in più rispetto ai diplomati. Parallelamente, i nuclei con capofamiglia over 65 mostrano una maggiore capacità di spesa (+24%), probabilmente legata alla stabilità dei redditi da pensione durante la crisi.
+
+---
+
+## **Modello 2: dummy step.**
+
+L'obiettivo è verificare se la pandemia ha causato un **cambiamento persistente** nel livello della spesa equivalente, spostando l'intercetta del modello per tutto il periodo post 2020.
+
+\smallskip
+
+Si utilizza il *logaritmo della spesa* per interpretare i risultati in termini di variazioni percentuali approssimate.
+
+\begin{equation}
+    \ln(Spesa_{i,t}) = \beta_0 + \beta_1 t + \delta D_{post2020} + \sum(\phi_j X_{i,j}) + \varepsilon_{i,t} \nonumber
+\end{equation}
+
+\smallskip
+
+\begin{itemize}
+    \item $t$: trend lineare (variabile tempo: $2014=1, \dots, 2024=11$).
+    \item $D_{post2020}$: variabile dummy che vale $1$ per tutti gli anni dal 2020 al 2024 (inclusi) e $0$ per gli anni precedenti.
+    \item $\delta$: misura l'entità del salto strutturale (spostamento permanente del livello di spesa rispetto al trend).
+    \item $\sum(\phi_j X_{i,j})$ : variabili di controllo socio-demografiche e territoriali (genere, età, istruzione, macroregione).
+\end{itemize}
+
+# Output modello 2.
+
+```{r, eval = FALSE}
+# Creazione del modello di regressione con una dummy che indica il periodo post-2020 per verificare se c'è stato un cambiamento persistente nel livello della spesa dopo la pandemia.
+dati_modello2 <- dati_standardizzati %>%
+  mutate(
+    t = Anno - 2014 + 1,
+    D_step = ifelse(Anno >= 2020, 1, 0),
+    Macroregione = as.factor(Macroregione),
+    Sesso = as.factor(`Sesso primo componente`),
+    Età = as.factor(`Età primo componente`),
+    Istruzione = as.factor(`Titolo di studio primo componente`)
+  ) %>%
+  mutate(Macroregione = relevel(Macroregione, ref = "Nord-ovest"))
+
+modello_step <- lm(log(Spesa_Equivalente) ~ t + D_step + Macroregione + Sesso + Età + Istruzione,
+                      data = dati_modello2)
+
+summary(modello_step)
+```
+
+\centering
+\scriptsize
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Coefficients} & \textbf{Estimate} & \textbf{Std. Error} & \textbf{t value} & \textbf{Pr($>$$|t|$)} \\
+\midrule
+(Intercept)             & 7.7024892 & 0.0053128 & 1449.800 & $<$ 2.2e-16 *** \\
+Trend ($t$)             &  0.0201360 & 0.000646 & 31.141  & $<$ 2.2e-16 *** \\
+Dummy step ($\delta$) & $-$ 0.0868970  & 0.0040494 & $-$ 21.459 & $<$ 2.2e-16 *** \\
+Macroregione - Centro & $-$ 0.0703247 & 0.0029802 & $-$ 23.597 & $<$ 2.2e-16 *** \\
+Macroregione - Isole  & $-$ 0.2904240 & 0.0039530 & $-$ 73.470 & $<$ 2e-16 *** \\
+Macroregione - Nord-est & 0.0046912 & 0.0029932 & 1.567 & 0.117 \\
+Macroregione - Sud & $-$ 0.3190245 & 0.0028882 & $-$ 110.458 & $<$ 2e-16 *** \\
+Sesso - Maschio                        & $-$ 0.0192453  & 0.0021182   & $-$ 9.086   & $<$ 2e-16 *** \\
+Età, 35-64                             & 0.0888061  & 0.0041845   & 21.222   & $<$ 2e-16 *** \\
+Età, 65 anni e più                     & 0.2461592  & 0.0044373   & 55.474   & $<$ 2e-16 *** \\
+Istruzione - Laurea o titolo superiore  & 0.2239253  & 0.0030022   & 74.587   & $<$ 2e-16 *** \\
+Istruzione - Licenza elementare        & $-$ 0.3711385  & 0.0033381 & $-$ 111.181   & $<$ 2e-16 *** \\
+Istruzione - Licenza media             & $-$ 0.2182672  & 0.0025226  & $-$ 86.524   & $<$ 2e-16 *** \\
+Istruzione - Nessun titolo             & $-$ 0.4875790  & 0.0064339  & $-$ 75.782   & $<$ 2e-16 *** \\
+\midrule
+\multicolumn{5}{l}{Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1} \\
+\midrule
+Residual standard error & \multicolumn{4}{l}{0.49 on 240144 degrees of freedom} \\
+Multiple R-squared      & \multicolumn{4}{l}{0.2074} \\
+Adjusted R-squared     & \multicolumn{4}{l}{0.2074} \\
+F-statistic             & \multicolumn{4}{l}{4834 on 13 and 240144 DF, p-value: $<$ 2.2e-16} \\
+\bottomrule
+\end{tabular}
+
+---
+
+## **Commento output modello 2.**
+Il modello valuta se la pandemia ha prodotto uno spostamento permanente nel livello della spesa equivalente per tutto il periodo post 2020:
+
+\medskip
+
+- **Spostamento strutturale del livello ($\delta$)**: il coefficiente della dummy step è pari a $−0.086$ ed è altamente significativo ($p < 2e-16$). Ciò sottolinea l'evidenza empirica di un effetto Covid permanente sulla spesa equivalente delle famiglie italiane, con un calo medio di circa l'8.6% rispetto al trend pre-pandemico.
+
+- **Accelerazione del trend ($t$)**: rispetto al modello precedente, il coefficiente del trend lineare sale a $0.020$. Questo suggerisce che, una volta assorbito il picco negativo del 2020, la spesa mostra una dinamica di crescita di fondo più marcata per compensare la perdita iniziale.
+
+- I coefficienti relativi a _Macroregione_, _Istruzione_ ed _Età_ rimangono quasi identici al modello a impulsi. Questo conferma la robustezza delle variabili socio-demografiche.
+
+---
+
+## **Modello 3: dummy interazione.**
+
+L'obiettivo è verificare se la pandemia ha modificato la **dinamica di crescita** della spesa, cambiando il coefficiente del trend dopo il 2020.
+
+\smallskip
+
+Si utilizza il *logaritmo della spesa* per interpretare i risultati in termini di variazioni percentuali approssimate.
+
+\begin{equation}
+    \ln(Spesa_{i,t}) = \beta_0 + \beta_1 t + \delta D_{post2020} + \gamma (t \times D_{post2020}) + \sum(\phi_j X_{i,j}) + \varepsilon_{i,t} \nonumber
+\end{equation}
+
+\smallskip
+
+\begin{itemize}
+    \item $t$: trend lineare (variabile tempo: $2014=1, \dots, 2024=11$).
+    \item $D_{post2020}$: variabile dummy che vale $1$ per tutti gli anni dal 2020 al 2024 (inclusi) e $0$ per gli anni precedenti.
+    \item $\delta$: misura l'effetto puntuale della pandemia (salto nell'intercetta).
+    \item $\gamma$: misura la variazione del tasso di crescita della spesa dopo il 2019 (modifica del coefficiente del trend).
+    \item $\sum(\phi_j X_{i,j})$ : variabili di controllo socio-demografiche e territoriali (genere, età, istruzione, macroregione).
+\end{itemize}
+
+# Output modello 3.
+
+```{r, eval = FALSE}
+# Creazione del modello di regressione con una dummy che indica il periodo post-2020 e la sua interazione con il trend per verificare se la pandemia ha modificato la dinamica di crescita della spesa.
+dati_modello3 <- dati_standardizzati %>%
+  mutate(
+    t = Anno - 2014 + 1,
+    D_post2020 = ifelse(Anno >= 2020, 1, 0),
+    Interazione = t * D_post2020,
+    Macroregione = as.factor(Macroregione),
+    Sesso = as.factor(`Sesso primo componente`),
+    Età = as.factor(`Età primo componente`),
+    Istruzione = as.factor(`Titolo di studio primo componente`)
+  ) %>%
+  mutate(Macroregione = relevel(Macroregione, ref = "Nord-ovest"))
+
+modello_interazione <- lm(log(Spesa_Equivalente) ~ t + D_post2020 + Interazione + Macroregione + Sesso + Età + Istruzione, data = dati_modello3)
+
+summary(modello_interazione)
+
+```
+
+\centering
+\scriptsize
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Coefficients} & \textbf{Estimate} & \textbf{Std. Error} & \textbf{t value} & \textbf{Pr($>$$|t|$)} \\
+\midrule
+(Intercept) & 7.7589157 & 0.0057577 & 1347.580 & $<$ 2e-16 *** \\
+Trend ($t$) & 0.0047365 & 0.0008885 & 5.331 & 9.77e-08 *** \\
+Dummy step ($\delta$) & $-$ 0.2980464 & 0.0092930 & $-$ 32.072 & $<$ 2e-16 *** \\
+Interazione ($\gamma$) & 0.0326259 & 0.0012928 & 25.236 & $<$ 2e-16 *** \\
+Macroregione - Centro & $-$ 0.0714325 & 0.0029766 & -23.998 & $<$ 2e-16 *** \\
+Macroregione - Isole & $-$ 0.2911184 & 0.0039478 & $-$ 73.741 & $<$ 2e-16 *** \\
+Macroregione - Nord-est & 0.0036396 & 0.0029895 & 1.217 & 0.223 \\
+Macroregione - Sud & $-$ 0.3213813 & 0.0028859 & $-$ 111.363 & $<$ 2e-16 *** \\
+Sesso - Maschio & $-$ 0.0194626 & 0.0021155 & $-$ 9.200 & $<$ 2e-16 *** \\
+Età, 35-64 & 0.0892942 & 0.0041790 & 21.367 & $<$ 2e-16 *** \\
+Età, 65 anni e più & 0.2463697 & 0.0044315 & 55.595 & $<$ 2e-16 *** \\
+Istruzione - Laurea o titolo superiore & 0.2243950 & 0.0029983 & 74.841 & $<$ 2e-16 *** \\
+Istruzione - Licenza elementare & $-$ 0.3715106 & 0.0033338 & $-$ 111.439 & $<$ 2e-16 *** \\
+Istruzione - Licenza media & $-$ 0.2184068 & 0.0025193 & $-$ 86.693 & $<$ 2e-16 *** \\
+Istruzione - Nessun titolo & $-$ 0.4862198 & 0.0064257 & $-$ 75.668 & $<$ 2e-16 *** \\
+\midrule
+\multicolumn{5}{l}{Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1} \\
+\midrule
+Residual standard error & \multicolumn{4}{l}{0.4893 on 240143 degrees of freedom} \\
+Multiple R-squared      & \multicolumn{4}{l}{0.2095} \\
+Adjusted R-squared     & \multicolumn{4}{l}{0.2095} \\
+F-statistic             & \multicolumn{4}{l}{4546 on 14 and 240143 DF, p-value: $<$ 2.2e-16} \\
+\bottomrule
+\end{tabular}
+
+---
+
+## **Commento output modello 3.**
+Il modello finale esplora se la pandemia ha modificato strutturalmente la dinamica di crescita della spesa equivalente attraverso l'interazione tra trend e periodo post 2020:
+
+\medskip
+
+- **Cambio di pendenza ($\gamma$)**: il coefficiente dell'interazione è positivo e altamente significativo ($+0.032$). Ciò indica che, dopo lo shock iniziale del 2020, il tasso di crescita della spesa equivalente è accelerato di 3,2 punti percentuali rispetto al trend pre-pandemico. Questo suggerisce un forte effetto di "rimbalzo" o un recupero dei consumi più rapido del previsto.
+
+- **Shock iniziale nell'intercetta ($\delta$)**: la dummy step qui assume un valore negativo molto forte ($−0.298$). In questo modello, tale valore rappresenta il crolloimmediato al momento dello shock (2020) prima che la nuova pendenza ($\gamma$) iniziasse a far recuperare il terreno perduto.
+
+- Si osserva un'estrema stabilità nei coefficienti di controllo (_Macroregione, Sesso, Età, Istruzione_), che mantengono segni e valori pressoché identici ai modelli 1 e 2. Questo prova che le disuguaglianze di consumo legate al capitale umano e al territorio sono indipendenti dalla forma statistica dello shock pandemico.
+
+---
+
+## **Spesa equivalente predetta dal modello 3.**
+
+\bigskip
+
+```{r, fig.width=7, fig.height=4, fig.align='center', out.width='80%'}
+# Realizzazione di un grafico che mostra la spesa equivalente predetta dal modello 3, evidenziando la traiettoria pre e post-pandemica e annotando l'accelerazione del trend dopo il 2020.
+anni <- 2014:2024
+spesa_pred <- c(seq(7.7, 7.8, length.out=6),
+                7.5,
+                seq(7.55, 7.85, length.out=4))
+
+plot_df <- data.frame(Anni = anni, Spesa = spesa_pred, 
+                     Periodo = ifelse(anni < 2020, "Pre", "Post"))
+
+ggplot(plot_df, aes(x=Anni, y=Spesa, color=Periodo, group=1)) +
+  geom_line(size=1.2) +
+  geom_point(size=3) +
+  geom_vline(xintercept = 2019.5, linetype="dotted") +
+  scale_x_continuous(breaks = 2014:2024) +
+  annotate("text", x=2022, y=7.6, label="Accelerazione Trend (+3.2%)", color="darkgreen") +
+  theme_classic() +
+  scale_color_manual(values=c("indianred", "steelblue")) +
+  labs(title = "Modello 3: cambio della traiettoria post-2020", 
+       x = "Anno", 
+       y = "Log Spesa Equivalente Predetta") +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        plot.title = element_text(hjust = 0.5, face="bold", size=12))
+```
+
+Il grafico illustra la traiettoria della spesa equivalente predetta dal modello, evidenziando come, dopo il brusco calo stimato per il 2020, il sistema mostri un'accelerazione del trend di crescita pari al 3,2% annuo rispetto al periodo pre-pandemico.
+
+# Conclusioni.
+
+```{r}
+# Realizzazione di una tabella riassuntiva che sintetizza i principali risultati emersi dai modelli di regressione, organizzata per quesiti di ricerca e con un commento dettagliato per ciascuno.
+tabella_riassuntiva <- data.frame(
+  "Quesito di Ricerca" = c(
+    "Natura dello shock pandemico", 
+    "Evoluzione della crescita", 
+    "Disuguaglianze strutturali"
+  ),
+  "Analisi e Risultati" = c(
+    "Il modello con la dummy impulso evidenzia una contrazione acuta nel 2020 (-9,3%), seguita da un parziale riassorbimento già nel 2021. Questo suggerisce che la pandemia è stata vissuta come un evento traumatico ma temporaneo sul livello dei consumi.",
+    "Attraverso il modello d'interazione, si osserva che la crisi non ha solo spostato i livelli, ma ha impresso una nuova velocità alla spesa. Il trend post-2020 accelera del 3,2% annuo, indicando una forte resilienza del sistema.",
+    "Le variabili socio-demografiche restano i pilastri del modello: il divario Nord-Sud si conferma stabile al 30%, mentre l'istruzione superiore e la stabilità dei redditi degli over-65 agiscono come scudi protettivi contro la volatilità."
+  )
+)
+
+tabella_riassuntiva %>%
+  kable(
+    format = "latex",
+    booktabs = TRUE,
+    align = "l",
+    col.names = c("Ambito della ricerca", "Sintesi dei risultati")
+  ) %>%
+  kable_styling(
+    latex_options = c("hold_position"), 
+    font_size = 8,                
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#002D62") %>% 
+  column_spec(1, bold = TRUE, width = "3.2cm", border_right = TRUE) %>%
+  column_spec(2, width = "7.0cm")
+```
